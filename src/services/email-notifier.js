@@ -88,6 +88,8 @@ export async function sendNotification(findings, recipient) {
     return;
   }
 
+  const resend = new Resend(apiKey);
+
   await resend.emails.send({
     from,
     to,
