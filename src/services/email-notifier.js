@@ -90,12 +90,16 @@ export async function sendNotification(findings, recipient) {
 
   const resend = new Resend(apiKey);
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from,
     to,
     subject: `Free AI Tracker - Daily Digest: ${findings.length} Offers`,
     html: buildEmailHtml(findings),
   });
+
+  if (result?.error) {
+    console.error(`Resend rejected email to ${to}: ${result.error.message}`);
+  }
 }
 
 export { buildEmailHtml };
