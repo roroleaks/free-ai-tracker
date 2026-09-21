@@ -3,12 +3,17 @@ const STRONG_HINTS = [
   { phrase: 'no credit card', weight: 0.4 },
   { phrase: 'free tier', weight: 0.35 },
   { phrase: 'open weights', weight: 0.35 },
+  { phrase: 'free api', weight: 0.3 },
+  { phrase: 'free inference', weight: 0.3 },
+  { phrase: 'free credits', weight: 0.3 },
+  { phrase: 'ai credits', weight: 0.25 },
 ];
 
 const KEYWORDS = [
   'free', 'open source', 'release', 'launch', 'available',
   'beta', 'preview', 'trial', 'promo', 'discount',
   'llm', 'model', 'api', 'inference', 'fine-tun',
+  'credits', 'allowance', 'quota', 'serverless',
 ];
 
 const SOURCE_BOOST = {
@@ -16,6 +21,9 @@ const SOURCE_BOOST = {
   openrouter: 0.1,
   huggingface: 0.1,
   'vercel-ai-sdk': 0.05,
+  groq: 0.1,
+  together: 0.1,
+  google: 0.1,
 };
 
 function scoreItem(finding) {
