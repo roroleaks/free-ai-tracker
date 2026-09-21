@@ -1,6 +1,6 @@
-# AI Offer Tracker
+# AI Offer Tracker / Free AI Tracker
 
-Automated scanner for free AI models, time-allowed promos, and platform updates. Runs as a Vercel cron job every Monday at 08:00 UTC.
+Automated scanner for free AI models, time-allowed promos, and platform updates. Runs as a Vercel cron job every Monday at 08:00 UTC. Multi-user: any visitor can subscribe via the dashboard to receive the weekly AI digest by email.
 
 ## Features
 
@@ -8,7 +8,8 @@ Automated scanner for free AI models, time-allowed promos, and platform updates.
 - **Social/Platform Monitor** - HuggingFace, Vercel, OpenAI blog updates
 - **Free Tier Scanner** - Detects free models on OpenRouter, Replicate
 - **AI Filtering** - Keyword-based scoring for relevance
-- **Email Notifications** - Structured HTML emails via Resend
+- **Email Notifications** - Structured HTML emails via Resend to all subscribers
+- **Subscription API** - Visitors subscribe via the dashboard; emails stored in Upstash Redis
 
 ## Setup
 
@@ -22,7 +23,7 @@ npm install
 cp .env.example .env
 ```
 
-3. Add your Resend API key and email addresses
+3. Add your Resend API key and Upstash Redis credentials
 
 4. Deploy to Vercel:
 ```bash
@@ -33,7 +34,8 @@ vercel deploy
 
 ```
 ├── api/
-│   └── check-updates.js          # Cron job entrypoint
+│   ├── check-updates.js          # Cron job entrypoint
+│   └── subscribe.js              # Subscription endpoint (POST /api/subscribe)
 ├── src/
 │   ├── scrapers/
 │   │   ├── github-rss.js         # GitHub releases
@@ -43,10 +45,16 @@ vercel deploy
 │   │   ├── ai-filter.js          # Relevance scoring
 │   │   └── email-notifier.js     # Resend email client
 │   └── utils/
+│       ├── kv.js                 # Upstash Redis wrapper (in-memory fallback)
 │       └── logger.js             # Structured logging
 ├── vercel.json                   # Cron schedule (weekly, Mon 08:00 UTC)
 └── package.json
 ```
+
+## Data Model (Upstash Redis)
+
+- `subscribers` — Set of subscriber email addresses
+- `latest_ai_offers` — Most recent aggregated scan results
 
 ## Local Development
 

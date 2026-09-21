@@ -74,14 +74,17 @@ function buildEmailHtml(findings) {
   `;
 }
 
-export async function sendNotification(findings) {
+export async function sendNotification(findings, recipient) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
-  const to = process.env.EMAIL_TO;
+  const to = recipient || process.env.EMAIL_TO;
 
-  if (!apiKey || !to) {
-    if (!apiKey) console.warn('RESEND_API_KEY not set, skipping email');
-    if (!to) console.warn('EMAIL_TO not set, skipping email');
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY not set, skipping email');
+    return;
+  }
+  if (!to) {
+    console.warn('No recipient resolved (missing EMAIL_TO or subscriber list), skipping email');
     return;
   }
 

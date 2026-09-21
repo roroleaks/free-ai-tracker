@@ -67,6 +67,31 @@
       </div>
     </div>
 
+    <div class="mb-8 bg-gradient-to-br from-primary-600 to-primary-800 rounded-xl p-6 border border-primary-500/30">
+      <div class="flex flex-col md:flex-row md:items-center gap-4">
+        <div class="flex-1">
+          <h2 class="text-xl font-bold text-white">Never miss a free AI model 🚀</h2>
+          <p class="text-primary-100 text-sm mt-1">Sign up for weekly AI alerts — free models, open weights, and platform updates straight to your inbox.</p>
+          <p id="subscribeStatus" class="text-primary-100 text-sm mt-2 hidden"></p>
+        </div>
+        <form id="subscribeForm" class="flex flex-col sm:flex-row gap-3 md:w-1/2" novalidate>
+          <input
+            id="subscribeEmail"
+            type="email"
+            required
+            placeholder="you@example.com"
+            class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-primary-100 focus:outline-none focus:ring-2 focus:ring-white/50"
+          />
+          <button
+            type="submit"
+            class="px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors whitespace-nowrap"
+          >
+            Subscribe for Free AI Alerts
+          </button>
+        </form>
+      </div>
+    </div>
+
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-2xl font-bold">Latest AI Offers</h2>
       <div class="flex gap-2 flex-wrap">
@@ -230,6 +255,45 @@
     });
 
     document.getElementById('refreshBtn').addEventListener('click', fetchOffers);
+
+    const subscribeForm = document.getElementById('subscribeForm');
+    const subscribeEmail = document.getElementById('subscribeEmail');
+    const subscribeStatus = document.getElementById('subscribeStatus');
+
+    function setSubscribeStatus(message, isError = false) {
+      subscribeStatus.textContent = message;
+      subscribeStatus.classList.remove('hidden', 'text-red-300', 'text-primary-100');
+      subscribeStatus.classList.add(isError ? 'text-red-300' : 'text-primary-100');
+    }
+
+    subscribeForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const email = subscribeEmail.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setSubscribeStatus('Please enter a valid email address.', true);
+        return;
+      }
+
+      setSubscribeStatus('Subscribing…');
+
+      try {
+        const res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          subscribeEmail.value = '';
+          setSubscribeStatus(data.message || 'Successfully subscribed!');
+        } else {
+          setSubscribeStatus(data.error || 'Subscription failed. Please try again.', true);
+        }
+      } catch (err) {
+        setSubscribeStatus('Network error. Please try again.', true);
+      }
+    });
 
     fetchOffers();
     setInterval(fetchOffers, 5 * 60 * 1000);

@@ -29,13 +29,6 @@ export default async function handler(req, res) {
     const scoredFindings = await filterAndScore(allFindings);
     const relevantFindings = scoredFindings.filter(f => f.score >= 0.6);
 
-    if (relevantFindings.length > 0) {
-      await sendNotification(relevantFindings);
-      logger.info(`Sent notification with ${relevantFindings.length} relevant findings`);
-    } else {
-      logger.info('No relevant findings to notify');
-    }
-
     const result = {
       timestamp: new Date().toISOString(),
       totalFindings: allFindings.length,
@@ -45,6 +38,26 @@ export default async function handler(req, res) {
 
     await kv.set('latest_ai_offers', result);
     logger.info('Saved offers to KV');
+
+    if (relevantFindings.length > 0) {
+      const subscribers = await kv.smembers('subscribers');
+      const recipients = subscribers.length > 0 ? subscribers : [process.env.EMAIL_TO].filter(Boolean);
+
+      if (recipients.length > 0) {
+        for (const recipient of recipients) {
+          try {
+            await sendNotification(relevantFindings, recipient);
+            logger.info(`Digest sent to ${recipient}`);
+          } catch (e) {
+            logger.error(`Failed to email ${recipient}`, e);
+          }
+        }
+      } else {
+        logger.warn('No subscribers and no EMAIL_TO configured — digest not emailed');
+      }
+    } else {
+      logger.info('No relevant findings to notify');
+    }
 
     const duration = Date.now() - startTime;
     logger.info(`Check completed in ${duration}ms`);
