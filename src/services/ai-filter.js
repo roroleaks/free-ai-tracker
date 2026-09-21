@@ -26,6 +26,16 @@ const SOURCE_BOOST = {
   google: 0.1,
 };
 
+const NEW_MODEL_DAYS = 7;
+const NEW_MODEL_BOOST = 0.15;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const GRACE_MS = 60 * 60 * 1000;
+
+function isNewModel(finding, now = Date.now()) {
+  const date = finding?.date ? new Date(finding.date) : null;
+  return Boolean(date && !Number.isNaN(date.getTime()) && now - date.getTime() <= NEW_MODEL_DAYS * DAY_MS + GRACE_MS);
+}
+
 function scoreItem(finding) {
   const text = `${finding.title} ${finding.description || ''}`.toLowerCase();
   let score = 0;
@@ -40,6 +50,7 @@ function scoreItem(finding) {
 
   score += SOURCE_BOOST[finding.source] || 0;
   if (text.includes('free')) score += 0.2;
+  if (isNewModel(finding)) score += NEW_MODEL_BOOST;
 
   return Math.min(score, 1);
 }
@@ -65,8 +76,10 @@ function dedupe(findings) {
 export async function filterAndScore(findings) {
   const scored = findings
     .filter(Boolean)
-    .map(finding => ({ ...finding, score: scoreItem(finding) }));
+    .map(finding => ({ ...finding, score: scoreItem(finding), isNew: isNewModel(finding) }));
 
   const deduped = dedupe(scored);
   return deduped.sort((a, b) => b.score - a.score).slice(0, 15);
 }
+
+export { isNewModel, NEW_MODEL_DAYS };
