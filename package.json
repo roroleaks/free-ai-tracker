@@ -1,0 +1,19 @@
+{
+  "name": "ai-offer-tracker",
+  "version": "1.0.0",
+  "description": "Automated scanner for free AI models, time-allowed promos, and platform updates",
+  "main": "api/check-updates.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "node src/utils/logger.js"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "resend": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
