@@ -1,6 +1,6 @@
 # AI Offer Tracker
 
-Automated scanner for free AI models, time-allowed promos, and platform updates. Runs as a Vercel cron job every 6 hours.
+Automated scanner for free AI models, time-allowed promos, and platform updates. Runs as a Vercel cron job every Monday at 08:00 UTC.
 
 ## Features
 
@@ -44,7 +44,7 @@ vercel deploy
 │   │   └── email-notifier.js     # Resend email client
 │   └── utils/
 │       └── logger.js             # Structured logging
-├── vercel.json                   # Cron schedule (every 6 hours)
+├── vercel.json                   # Cron schedule (weekly, Mon 08:00 UTC)
 └── package.json
 ```
 
