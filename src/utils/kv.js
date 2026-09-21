@@ -34,18 +34,30 @@ export const kv = {
   },
   async sadd(key, value) {
     if (redis) {
-      await redis.sadd(key, value);
-    } else {
-      if (!memorySets.has(key)) memorySets.set(key, new Set());
-      memorySets.get(key).add(value);
-      memoryWarning(key);
+      return await redis.sadd(key, value);
     }
+    if (!memorySets.has(key)) memorySets.set(key, new Set());
+    const set = memorySets.get(key);
+    const wasPresent = set.has(value);
+    set.add(value);
+    memoryWarning(key);
+    return wasPresent ? 0 : 1;
   },
   async smembers(key) {
     if (redis) {
       return await redis.smembers(key);
     }
     return memorySets.get(key) ? [...memorySets.get(key)] : [];
+  },
+  async srem(key, value) {
+    if (redis) {
+      return await redis.srem(key, value);
+    }
+    if (memorySets.has(key)) {
+      memorySets.get(key).delete(value);
+    }
+    memoryWarning(key);
+    return 1;
   },
 };
 
