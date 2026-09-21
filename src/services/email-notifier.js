@@ -1,4 +1,6 @@
-import { Resend } from 'resend';
+import fetch from 'node-fetch';
+
+const MAILGUN_API_URL = 'https://api.mailgun.net/v3';
 
 function sourceBadge(source) {
   const labels = {
@@ -122,66 +124,58 @@ function buildWelcomeEmailHtml(email) {
   `;
 }
 
-export async function sendWelcomeEmail(email) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
-  const to = email;
+async function sendMailgun({ from, to, subject, html }) {
+  const { MAILGUN_API_KEY, MAILGUN_DOMAIN } = process.env;
 
-  if (!apiKey) {
-    console.warn('RESEND_API_KEY not set, skipping welcome email');
+  if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN) {
+    console.warn('MAILGUN_API_KEY or MAILGUN_DOMAIN not set, skipping email');
     return;
   }
   if (!to) {
-    console.warn('No recipient resolved for welcome email, skipping');
+    console.warn('No recipient resolved for email, skipping');
     return;
   }
 
-  const resend = new Resend(apiKey);
-
-  const { data, error } = await resend.emails.send({
-    from,
-    to,
-    subject: 'Welcome to Free AI Tracker! 🎉',
-    html: buildWelcomeEmailHtml(to),
+  const res = await fetch(`${MAILGUN_API_URL}/${MAILGUN_DOMAIN}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`api:${MAILGUN_API_KEY}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ from, to, subject, html }).toString(),
   });
 
-  if (error) {
-    throw new Error(`Resend rejected welcome email to ${to}: ${error.message}`);
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(`Mailgun rejected email to ${to}: ${data.message || res.statusText}`);
   }
-  if (!data?.id) {
-    throw new Error(`Resend returned no message id for welcome email to ${to} — send did not complete`);
+  if (!data.id) {
+    throw new Error(`Mailgun returned no message id for ${to} — send did not complete`);
   }
 }
 
+export async function sendWelcomeEmail(email) {
+  const from = process.env.EMAIL_FROM || `Free AI Tracker <mailgun@${process.env.MAILGUN_DOMAIN || 'sandbox'}>`;
+
+  await sendMailgun({
+    from,
+    to: email,
+    subject: 'Welcome to Free AI Tracker! 🎉',
+    html: buildWelcomeEmailHtml(email),
+  });
+}
+
 export async function sendNotification(findings, recipient) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
+  const from = process.env.EMAIL_FROM || `Free AI Tracker <mailgun@${process.env.MAILGUN_DOMAIN || 'sandbox'}>`;
   const to = recipient || process.env.EMAIL_TO;
 
-  if (!apiKey) {
-    console.warn('RESEND_API_KEY not set, skipping digest email');
-    return;
-  }
-  if (!to) {
-    console.warn('No recipient resolved for digest email (missing EMAIL_TO or subscriber list), skipping');
-    return;
-  }
-
-  const resend = new Resend(apiKey);
-
-  const { data, error } = await resend.emails.send({
+  await sendMailgun({
     from,
     to,
     subject: `Free AI Tracker - Daily Digest: ${findings.length} Offers`,
     html: buildEmailHtml(findings),
   });
-
-  if (error) {
-    throw new Error(`Resend rejected email to ${to}: ${error.message}`);
-  }
-  if (!data?.id) {
-    throw new Error(`Resend returned no message id for ${to} — send did not complete`);
-  }
 }
 
 export { buildEmailHtml, buildWelcomeEmailHtml };
