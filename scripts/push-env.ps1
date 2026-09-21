@@ -11,7 +11,7 @@ Get-Content ".env.local" | ForEach-Object {
   }
 }
 
-$required = @("UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "MAILGUN_API_KEY", "MAILGUN_DOMAIN", "EMAIL_FROM", "EMAIL_TO")
+$required = @("UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "BREVO_API_KEY", "EMAIL_FROM", "EMAIL_TO")
 $missing = $required | Where-Object { -not $fields[$_] }
 if ($missing) {
   Write-Host "ERROR: missing values in .env.local: $($missing -join ', ')"

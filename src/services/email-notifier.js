@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 
-const MAILGUN_API_URL = 'https://api.mailgun.net/v3';
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 function sourceBadge(source) {
   const labels = {
@@ -124,11 +124,11 @@ function buildWelcomeEmailHtml(email) {
   `;
 }
 
-async function sendMailgun({ from, to, subject, html }) {
-  const { MAILGUN_API_KEY, MAILGUN_DOMAIN } = process.env;
+async function sendBrevo({ from, to, subject, html }) {
+  const apiKey = process.env.BREVO_API_KEY;
 
-  if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN) {
-    console.warn('MAILGUN_API_KEY or MAILGUN_DOMAIN not set, skipping email');
+  if (!apiKey) {
+    console.warn('BREVO_API_KEY not set, skipping email');
     return;
   }
   if (!to) {
@@ -136,29 +136,38 @@ async function sendMailgun({ from, to, subject, html }) {
     return;
   }
 
-  const res = await fetch(`${MAILGUN_API_URL}/${MAILGUN_DOMAIN}/messages`, {
+  const match = from.match(/^(.*?)<([^>]+)>$/);
+  const senderName = match ? match[1].trim() : '';
+  const senderEmail = match ? match[2] : from;
+
+  const res = await fetch(BREVO_API_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${Buffer.from(`api:${MAILGUN_API_KEY}`).toString('base64')}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'api-key': apiKey,
+      'Content-Type': 'application/json',
     },
-    body: new URLSearchParams({ from, to, subject, html }).toString(),
+    body: JSON.stringify({
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
   });
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(`Mailgun rejected email to ${to}: ${data.message || res.statusText}`);
+    throw new Error(`Brevo rejected email to ${to}: ${data.message || res.statusText}`);
   }
-  if (!data.id) {
-    throw new Error(`Mailgun returned no message id for ${to} — send did not complete`);
+  if (!data.messageId) {
+    throw new Error(`Brevo returned no message id for ${to} — send did not complete`);
   }
 }
 
 export async function sendWelcomeEmail(email) {
-  const from = process.env.EMAIL_FROM || `Free AI Tracker <mailgun@${process.env.MAILGUN_DOMAIN || 'sandbox'}>`;
+  const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
 
-  await sendMailgun({
+  await sendBrevo({
     from,
     to: email,
     subject: 'Welcome to Free AI Tracker! 🎉',
@@ -167,10 +176,10 @@ export async function sendWelcomeEmail(email) {
 }
 
 export async function sendNotification(findings, recipient) {
-  const from = process.env.EMAIL_FROM || `Free AI Tracker <mailgun@${process.env.MAILGUN_DOMAIN || 'sandbox'}>`;
+  const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
   const to = recipient || process.env.EMAIL_TO;
 
-  await sendMailgun({
+  await sendBrevo({
     from,
     to,
     subject: `Free AI Tracker - Daily Digest: ${findings.length} Offers`,
