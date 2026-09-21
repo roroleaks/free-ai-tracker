@@ -98,7 +98,7 @@ export async function sendNotification(findings, recipient) {
   });
 
   if (result?.error) {
-    console.error(`Resend rejected email to ${to}: ${result.error.message}`);
+    throw new Error(`Resend rejected email to ${to}: ${result.error.message}`);
   }
 }
 

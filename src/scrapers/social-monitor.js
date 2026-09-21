@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 const SOURCES = [
   {
     name: 'huggingface',
-    url: 'https://huggingface.co/api/models?sort=lastModified&limit=20&search=llm,gpt',
+    url: 'https://huggingface.co/api/models?sort=lastModified&limit=20&search=llm+gpt',
     headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
     mapItem: (item) => ({
       title: item.id,
