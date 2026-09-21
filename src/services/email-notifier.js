@@ -153,4 +153,35 @@ export async function sendWelcomeEmail(email) {
   }
 }
 
+export async function sendNotification(findings, recipient) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
+  const to = recipient || process.env.EMAIL_TO;
+
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY not set, skipping digest email');
+    return;
+  }
+  if (!to) {
+    console.warn('No recipient resolved for digest email (missing EMAIL_TO or subscriber list), skipping');
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+
+  const { data, error } = await resend.emails.send({
+    from,
+    to,
+    subject: `Free AI Tracker - Daily Digest: ${findings.length} Offers`,
+    html: buildEmailHtml(findings),
+  });
+
+  if (error) {
+    throw new Error(`Resend rejected email to ${to}: ${error.message}`);
+  }
+  if (!data?.id) {
+    throw new Error(`Resend returned no message id for ${to} — send did not complete`);
+  }
+}
+
 export { buildEmailHtml, buildWelcomeEmailHtml };
