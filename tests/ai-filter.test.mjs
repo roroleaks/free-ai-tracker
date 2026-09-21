@@ -2,7 +2,7 @@ import {
   filterAndScore,
   isNewModel,
   NEW_MODEL_DAYS,
-} from './src/services/ai-filter.js';
+} from '../src/services/ai-filter.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 let allPass = true;

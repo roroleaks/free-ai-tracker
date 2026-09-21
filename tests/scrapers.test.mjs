@@ -1,8 +1,8 @@
 import 'dotenv/config';
 
-import { fetchGitHubReleases } from './src/scrapers/github-rss.js';
-import { fetchSocialUpdates } from './src/scrapers/social-monitor.js';
-import { scanFreeTiers, scanOpenRouter, scanHuggingFaceServerless } from './src/scrapers/free-tier-scanner.js';
+import { fetchGitHubReleases } from '../src/scrapers/github-rss.js';
+import { fetchSocialUpdates } from '../src/scrapers/social-monitor.js';
+import { scanFreeTiers, scanOpenRouter, scanHuggingFaceServerless } from '../src/scrapers/free-tier-scanner.js';
 
 const REQUIRED_FIELDS = ['title', 'description', 'url', 'source', 'date'];
 

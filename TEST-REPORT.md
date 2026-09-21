@@ -124,9 +124,10 @@ Suite: `tests/check-updates.test.mjs` → **8/8 passed**. Production logs verifi
 | `New Models` 7-day tab | ✅ PASS | `isNewOffer()`, `NEW_MODEL_DAYS=7`, `currentFilter === 'new'` case, NEW flame badge on cards, "No New Models" empty states |
 | Score color shading | ✅ PASS | `getScoreStyle()` — emerald (≥80), amber (≥50), slate (<50), applied to bar + text |
 | Profile image | ✅ PASS | `profilePhoto` `/profile.jpg`, alt text, `md:block` responsive, `onerror` hide fallback |
+| Email validator (frontend) | ✅ PASS | `isValidEmail()` helper present in deployed HTML |
 | Interactive wiring | ✅ PASS | Cache-busting refresh, subscribe form → `/api/subscribe`, 5-min auto-refresh, stats panel |
 
-Suite: `tests/frontend.test.mjs` → **35/36 assertions** (1 pending: `isValidEmail()` helper confirmed after deployment; re-run in verify step).
+Suite: `tests/frontend.test.mjs` → **36/36 assertions passed** (re-run after deploy).
 
 ---
 

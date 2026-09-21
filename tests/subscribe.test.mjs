@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { kv } from './src/utils/kv.js';
+import { kv } from '../src/utils/kv.js';
 
 let passes = 0;
 let failures = 0;
