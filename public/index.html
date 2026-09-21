@@ -24,6 +24,23 @@
     .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
     .skeleton { background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .tagline {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      align-self: flex-start;
+      padding: 0.12rem 0.6rem;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.4), 0 0 12px rgba(167, 139, 250, 0.25);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      line-height: 1;
+    }
   </style>
 </head>
 <body class="bg-dark-900 text-white min-h-screen flex flex-col">
@@ -36,7 +53,12 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
           </div>
-          <h1 class="text-xl font-bold text-white">Free AI Tracker</h1>
+          <h1 class="text-xl font-bold text-white flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-3 leading-tight">
+            Free AI Tracker
+            <span class="tagline text-[10px] sm:text-xs font-extrabold tracking-widest">
+              Stay Updated
+            </span>
+          </h1>
         </div>
         <div class="flex items-center gap-4">
           <span id="lastUpdated" class="text-sm text-dark-400 hidden sm:block">Loading...</span>
