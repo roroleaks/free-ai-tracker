@@ -5,9 +5,7 @@ import { scanFreeTiers } from '../src/scrapers/free-tier-scanner.js';
 import { filterAndScore } from '../src/services/ai-filter.js';
 import { sendNotification } from '../src/services/email-notifier.js';
 import { logger } from '../src/utils/logger.js';
-import { Redis } from '@upstash/redis';
-
-const redis = Redis.fromEnv();
+import { kv } from '../src/utils/kv.js';
 
 export default async function handler(req, res) {
   const startTime = Date.now();
@@ -45,8 +43,8 @@ export default async function handler(req, res) {
       findings: relevantFindings,
     };
 
-    await redis.set('latest_ai_offers', result);
-    logger.info('Saved offers to Redis');
+    await kv.set('latest_ai_offers', result);
+    logger.info('Saved offers to KV');
 
     const duration = Date.now() - startTime;
     logger.info(`Check completed in ${duration}ms`);

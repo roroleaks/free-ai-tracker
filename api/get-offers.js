@@ -1,10 +1,8 @@
-import { Redis } from '@upstash/redis';
-
-const redis = Redis.fromEnv();
+import { kv } from '../src/utils/kv.js';
 
 export default async function handler(req, res) {
   try {
-    const data = await redis.get('latest_ai_offers');
+    const data = await kv.get('latest_ai_offers');
 
     if (!data) {
       return res.status(404).json({
