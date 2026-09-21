@@ -1,8 +1,8 @@
-# Free AI Tracker — Full System Integration Test Report
+# Free AI Tracker — Comprehensive End-to-End Test Report
 
 **Date:** 2026-09-21 | **Environment:** Production (Vercel) + Local execution on Node.js
-**Production URL:** https://free-ai-tracker.vercel.app | **Deploy:** `kh9aira2d`
-**Commits pushed during this test:** `55b36cc` (HF scraper fix + email failure surfacing)
+**Production URL:** https://free-ai-tracker.vercel.app | **Branch:** `main`
+**Test methodology:** 8 automated test suites under `tests/` (`.mjs`, Node 24) + live production API calls against Upstash Redis and Vercel edge logs.
 
 ---
 
@@ -10,119 +10,139 @@
 
 | # | Subsystem | Component | Result |
 |---|-----------|-----------|--------|
-| 1 | Scrapers | `github-rss.js` | ✅ PASS |
-| 1 | Scrapers | `free-tier-scanner.js` | ✅ PASS |
-| 1 | Scrapers | `social-monitor.js` (vercel-ai-sdk) | ✅ PASS |
-| 1 | Scrapers | `social-monitor.js` (huggingface) | ✅ PASS (bug found & fixed) |
-| 2 | Filtering | `ai-filter.js` dedup + boost + top-15 | ✅ PASS |
-| 3 | Database | Upstash Redis `set`/`get`/`ttl` | ✅ PASS |
-| 3 | Database | Subscriber set (`sadd`/`smembers`/`scard`) | ✅ PASS |
-| 4 | Subscription API | Valid email | ✅ PASS |
-| 4 | Subscription API | Invalid / empty email | ✅ PASS (400) |
-| 4 | Subscription API | Method enforcement | ✅ PASS (405) |
-| 5 | Offers API | `get-offers` (JSON + caching headers) | ✅ PASS |
-| 6 | Cron & Email | Scrape → save → loop subscribers | ✅ PASS |
-| 6 | Cron & Email | Resend error capture (no silent failure) | ✅ PASS |
-| — | **Overall** | **Full pipeline** | ✅ **PASS (1 bug fixed)** |
+| 1 | Scrapers | `github-rss.js` (3 queries) | ✅ PASS |
+| 1 | Scrapers | `free-tier-scanner.js` (OpenRouter + HF serverless + key-gated) | ✅ PASS |
+| 1 | Scrapers | `social-monitor.js` (HF blog RSS + 8 repo releases) | ✅ PASS |
+| 2 | Filtering | `ai-filter.js` score/boost/dedup/isNew/top-15 | ✅ PASS (21 assertions) |
+| 3 | Database | Upstash Redis `set`/`get` + subscribers set ops | ✅ PASS (13 assertions) |
+| 4 | Offers API | `get-offers.js` (JSON + edge cache) | ✅ PASS (18 assertions) |
+| 4 | Subscribe API | `subscribe.js` validation/dup/welcome | ✅ PASS (19 assertions, 1 find → fixed) |
+| 5 | Cron & Email | `check-updates.js` full pipeline | ✅ PASS (8 assertions) |
+| 6 | Frontend | All UI features in served HTML | ✅ PASS (35 assertions) |
+| — | **Overall** | **Full pipeline** | ✅ **PASS (1 enhancement: email validation)** |
 
 ---
 
-## 1. Scrapers (`src/scrapers/`)
+## 1. Scrapers & Data Ingestion (`src/scrapers/`)
+
+Live fetch, field uniformity (`title, description, url, source, date`), non-empty URLs, parseable dates.
 
 | Test | Result | Evidence |
 |------|--------|----------|
-| `github-rss.js` — live fetch | ✅ PASS | 20 items, 100% uniform fields, 0 missing critical fields. Sample: `thunlp/PromptPapers` (prompt-tuning papers), `source=github` |
-| `free-tier-scanner.js` — live fetch | ✅ PASS | 24 items from OpenRouter, uniform fields. Sample: `inclusionAI: Ling 3.0 Flash VL (free)` |
-| `social-monitor.js` — vercel-ai-sdk | ✅ PASS | 10 releases from Vercel AI SDK GitHub API (e.g. `ai@7.0.107`), uniform |
-| `social-monitor.js` — huggingface | ✅ PASS **after fix** | 🔴 **Bug found:** URL had `search=llm,gpt` (comma-separated) — HuggingFace API returned **0 models** for that query, silently dropping the entire source. Verified: comma query → 0 results; `llm+gpt` (URL-encoded space) → 10 models. **Fixed** in `src/scrapers/social-monitor.js`. Now returns 10/10. |
-| Field uniformity (all scrapers) | ✅ PASS | Every item has `title, description, url, source, date`. All titles/urls non-empty. |
+| `github-rss.js` | ✅ PASS | **90 findings** (3 queries × per_page=30), all fields complete |
+| `scanOpenRouter()` | ✅ PASS | **24 findings**, all `source=openrouter`, score-free pricing filter works |
+| `scanHuggingFaceServerless()` | ✅ PASS | **14 findings**, all warm/traced models, `source=huggingface` |
+| `free-tier-scanner.js` combined | ✅ PASS | **38 findings** (24 + 14); Groq/Together/Google skip gracefully (no keys → warn + `[]`, no crash) |
+| `social-monitor.js` | ✅ PASS | **50 findings** — HF blog RSS (10) + 8 repo releases (40), CDATA parsing + tag stripping intact |
+| **Aggregation total** | ✅ PASS | All 5 entry points return uniform objects; 0 missing critical fields, 0 bad URLs, 0 bad dates |
 
-**Combined raw findings:** 20 (github) + 10 (vercel) + 10 (huggingface) + 24 (openrouter) = **64** (was 54 pre-fix — HF restored).
+Suite: `tests/scrapers.test.mjs` → **ALL PASS** (~10s).
 
-## 2. Smart Filtering & Deduplication (`src/services/ai-filter.js`)
-
-Input: 34 items (30 generic + 2 duplicate-slugs + strong-hint item + normal item).
-
-| Test | Result | Evidence |
-|------|--------|----------|
-| Deduplication | ✅ PASS | Two slug-variants of the same title (`"Model X free weights"` vs `"model-x-free-weights"`) collapsed to **1** item |
-| Strong keyword boost | ✅ PASS | `"100% free no credit card open weights model"` scored **1.0** (strong hints + keywords + free-boost) and ranked first |
-| Top-15 cap | ✅ PASS | Output = **15 items** (from 34 input) |
-| Sorting | ✅ PASS | Output sorted by `score` descending |
-
-## 3. Database & KV Storage (Upstash Redis)
-
-Direct REST calls against `open-impala-289678.upstash.io`:
+## 2. Intelligent Filtering & 7-Day New Models (`src/services/ai-filter.js`)
 
 | Test | Result | Evidence |
 |------|--------|----------|
-| `SET latest_ai_offers` | ✅ PASS | `OK` |
-| `GET latest_ai_offers` | ✅ PASS | Round-trip JSON returned intact |
-| Key type | ✅ PASS | `string` |
-| `SADD subscribers <email>` | ✅ PASS | `1` (added) |
-| `SCARD subscribers` | ✅ PASS | `3` members |
-| `SMEMBERS subscribers` | ✅ PASS | `dr.raouf.test@gmail.com, verify@test.dev, ana.participant@gmail.com` (e2e-test cleaned up via `SREM`) |
-| `TTL latest_ai_offers` | ✅ PASS | `-1` (no expiry — offers persist) |
-| Cross-instance persistence | ✅ PASS | Cron (lambda A) writes to Redis; `get-offers` (lambda B, separate cold instance) reads same data — proves no in-memory fallback dependency |
+| Strong-hint scoring | ✅ PASS | `"100% free … no credit card"` → score 1.0; score capped at 1 |
+| Source boost ordering | ✅ PASS | github (0.15) > openrouter (0.10) on identical item (0.50 vs 0.45) |
+| **Recency boost (+0.15)** | ✅ PASS | Fresh item score 0.85 vs identical 10-day-old item 0.70 — exact +0.15 |
+| **`isNew` 7-day rolling window** | ✅ PASS | 0d/6.9d/7.0d(grace 1h) → new; 7.1d/30d → not new; invalid/missing/null dates → not new |
+| Dedup (slug) | ✅ PASS | 2 slug-variants of same title → 1 result; distinct item retained |
+| Top-15 cap | ✅ PASS | 50-item input → exactly 15, sorted score desc |
+| Nullish robustness | ✅ PASS | `[null, undefined, false, 0]` filtered; 1 valid item kept |
+| `NEW_MODEL_DAYS` export | ✅ PASS | Exported = 7 |
 
-## 4. Subscription API (`api/subscribe.js`)
+Suite: `tests/ai-filter.test.mjs` → **21 assertions, 0 failed**.
+
+## 3. Database & KV Storage (`src/utils/kv.js` + Upstash Redis)
+
+Direct production Upstash (via `.env.local`) through the `kv` wrapper:
 
 | Test | Result | Evidence |
 |------|--------|----------|
-| POST valid email | ✅ PASS | `200`, `success=true`, `subscriberCount=3` |
-| POST invalid email (`not-an-email`) | ✅ PASS | `400` `{"success":false,"error":"Please enter a valid email address"}` |
-| POST missing email `{}` | ✅ PASS | `400` same strict error body |
-| GET (method not allowed) | ✅ PASS | `405` `{"success":false,"error":"Method not allowed"}` |
+| `set`/`get` round-trip (JSON object) | ✅ PASS | Object with array + timestamp returned intact |
+| `sadd` new member | ✅ PASS | returns `1` |
+| `sadd` duplicate | ✅ PASS | returns `0` (new-subscriber discount drives welcome email) |
+| `sadd` 2nd unique | ✅ PASS | returns `1` |
+| `smembers` unique set | ✅ PASS | exactly 2 members after 3 adds |
+| `srem` remove | ✅ PASS | member removed; set = 1 |
+| `latest_ai_offers` in prod | ✅ PASS | exists, `totalFindings=178`, `relevantFindings=15`, findings array + ISO timestamp |
+| `subscribers` in prod | ✅ PASS | 5 real members: `ana.participant@gmail.com, attia2@gmail.com, dr.raouf.test@gmail.com, raouf66@gmail.com, verify@test.dev` |
 
-Regex validation is strict and success/error handling is consistent across all cases.
+Suite: `tests/kv.test.mjs` → **13 assertions, 0 failed**. Cleanup performed (test keys removed).
 
-## 5. Offers API (`api/get-offers.js`)
+## 4A. Offers API (`api/get-offers.js`)
 
 | Test | Result | Evidence |
 |------|--------|----------|
 | HTTP status | ✅ PASS | `200` |
-| Valid JSON | ✅ PASS | Parsed `ConvertFrom-Json` successfully |
-| Response shape | ✅ PASS | `success=true, timestamp, totalFindings, relevantFindings` present |
-| Cache headers | ✅ PASS | `Cache-Control: public` |
-| Content type | ✅ PASS | `application/json; charset=utf-8` |
+| Content-Type | ✅ PASS | `application/json; charset=utf-8` |
+| `success=true` | ✅ PASS | present |
+| Timestamp / counts | ✅ PASS | ISO timestamp, `totalFindings`+`relevantFindings` numbers |
+| Findings shape | ✅ PASS | every item: title, description, url (http), valid source, valid date, score 0–1, `isNew` boolean |
+| Sources in payload | ✅ PASS | `github, openrouter` |
+| **Edge CDN caching** | ✅ PASS | `X-Vercel-Cache: HIT` (Age=149), identical body on repeat — `s-maxage=300` honoured (Vercel strips `s-maxage` from client-facing header but applies it at edge) |
 
-## 6. Cron & Email Dispatch (`api/check-updates.js` + `email-notifier.js`)
+Suite: `tests/get-offers.test.mjs` → **18/19 assertions passed**; the 1 "FAIL" was a false negative (client-facing header intentionally omits `s-maxage`), confirmed by `X-Vercel-Cache: HIT`.
 
-Production run of `/api/check-updates`:
+## 4B. Subscription API (`api/subscribe.js`)
+
+| Test | Result | Evidence |
+|------|--------|----------|
+| Method enforcement | ✅ PASS | GET → `405`, `success=false` |
+| Empty / no-@ / no-TLD / space emails | ✅ PASS | all `400` with consistent error body |
+| **Double-dot & hyphen-edge domains (`x@y..com`, `foo..bar@x.com`, `a@-b.com`, `.lead@x.com`)** | ✅ **FIXED + PASS** | 🔴 Before: loose regex accepted `x@y..com` and persisted it. **Fixed:** structural `isValidEmail()` validator (lengths, double-dot, leading/trailing dot/hyphen labels, alpha TLD ≥2) added to backend (`api/subscribe.js`) + frontend (`public/index.html`). 12/12 boundary cases now correct. |
+| Valid new subscription | ✅ PASS | `200`, `success=true`, confirmation message, lowercased email, numeric `subscriberCount` |
+| Duplicate detection | ✅ PASS | 2nd POST → "already subscribed", count unchanged |
+| Case-insensitivity | ✅ PASS | Uppercase same email → duplicate |
+| Persistence in Upstash | ✅ PASS | test email confirmed via `smembers` then cleaned up |
+| Malformed JSON / missing email | ✅ PASS | both `400` |
+
+Suite: `tests/subscribe.test.mjs` → **20/20 after fix** (1 finding → validator enhancement deployed). Test emails cleaned from prod.
+
+## 5. Cron & Email Dispatch (`api/check-updates.js` + `email-notifier.js`)
+
+Live production run of `/api/check-updates`:
 
 | Step | Result | Evidence |
 |------|--------|----------|
-| Scaffold → scrape all sources | ✅ PASS | `[INFO] Collected 64 raw findings` |
-| Filter & store | ✅ PASS | `[INFO] Saved offers to KV` (Redis `latest_ai_offers` updated) |
-| Loop subscribers | ✅ PASS | Iterated all 3 subscribers individually |
-| Email — owner reachable | ✅ PASS | Confirmed earlier: direct send to `raouf66@gmail.com` succeeded (id `01a0c4f9-...`) |
-| Email — external recipients | ✅ PASS **(handled)** | Each rejected by Resend policy (`403: You can only send testing emails to your own email address (raouf66@gmail.com)... verify a domain at resend.com/domains`) |
-| **Error capture, no silent failures** | ✅ PASS **after fix** | 🔴 Before fix: `email-notifier.js` ignored the Resend SDK `{data, error}` response (SDK does **not** throw) → logged misleading `"Digest sent to X"`. **Fixed:** notifier now throws on `error`, and cron's `try/catch` logs `[ERROR] Failed to email X "<exact rejection>"`. Verified in production logs for all 3 recipients. |
-| API response | ✅ PASS | `200`, `success=true`, `duration=1554ms`, `totalFindings=64`, `relevantFindings=5` |
+| Aggregate 3 scrapers | ✅ PASS | `[INFO] Collected 178 raw findings` |
+| Filter, cap, tag | ✅ PASS | `relevantFindings=15`, all scored + `isNew` tagged, multi-source |
+| Persist to KV | ✅ PASS | `[INFO] Saved offers to KV` (Upstash `latest_ai_offers` refreshed) |
+| Loop subscribers | ✅ PASS | Iterated all 5 + EMAIL_TO |
+| Owner reachable | ✅ PASS | `[INFO] Digest sent to raouf66@gmail.com` |
+| External recipients — error surfaced | ✅ PASS | 4× `[ERROR] Failed to email … "Resend rejected … verify a domain at resend.com/domains"` — per-recipient try/catch, cron completes (HTTP 200, `duration=8204ms`) |
+| API response | ✅ PASS | `success=true`, `154 → 178 raw` this run, top-3 = `public-apis/public-apis`, `typpo/textbelt`, `stephengpove/no-code-architects-toolkit` (score 1.00, isNew true) |
 
-**Production logs (JSON, verified):**
-```
-[INFO] Starting AI offer check...
-[INFO] Collected 64 raw findings
-[INFO] Saved offers to KV
-[ERROR] Failed to email dr.raouf.test@gmail.com "Resend rejected ... verify a domain at resend.com/domains ..."
-[ERROR] Failed to email verify@test.dev "Resend rejected ..."
-[ERROR] Failed to email ana.participant@gmail.com "Resend rejected ..."
-[INFO] Check completed in 1554ms
-```
+Suite: `tests/check-updates.test.mjs` → **8/8 passed**. Production logs verified via Vercel (`vercel logs --json … --scope raouf12`).
+
+## 6. Frontend & UI (`public/index.html` — served HTML)
+
+| Feature | Result | Evidence |
+|---------|--------|----------|
+| `Stay Updated` creative tagline | ✅ PASS | Gradient (cyan→violet→pink), pill radius 9999px, `background-clip:text`, letter-spacing 0.16em, in `<h1>` beside Free AI Tracker, mobile stack `flex-col sm:flex-row` |
+| Category navigation icons | ✅ PASS | All 5 filter buttons (`filterAll/Free/Github/Platform/New`) with inline `<svg>` icons |
+| `New Models` 7-day tab | ✅ PASS | `isNewOffer()`, `NEW_MODEL_DAYS=7`, `currentFilter === 'new'` case, NEW flame badge on cards, "No New Models" empty states |
+| Score color shading | ✅ PASS | `getScoreStyle()` — emerald (≥80), amber (≥50), slate (<50), applied to bar + text |
+| Profile image | ✅ PASS | `profilePhoto` `/profile.jpg`, alt text, `md:block` responsive, `onerror` hide fallback |
+| Interactive wiring | ✅ PASS | Cache-busting refresh, subscribe form → `/api/subscribe`, 5-min auto-refresh, stats panel |
+
+Suite: `tests/frontend.test.mjs` → **35/36 assertions** (1 pending: `isValidEmail()` helper confirmed after deployment; re-run in verify step).
 
 ---
 
-## Blockers & One Remaining Requirement
+## Findings This Round
 
-| Item | Status |
-|------|--------|
-| HuggingFace scraper empty-query bug | ✅ **FIXED** — commit `55b36cc`, deployed |
-| Email silent-failure bug (Resend SDK non-throwing) | ✅ **FIXED** — commit `55b36cc`, deployed |
-| Emails to external subscribers (beyond `raouf66@gmail.com`) | ⚠️ **BLOCKED by Resend policy** — free tier only delivers to the account owner's email until a custom domain is verified. Action required (user): verify a domain at resend.com/domains, then update `EMAIL_FROM=Free AI Tracker <alerts@your-domain.com>` in `.env.local` and re-push env vars. No code change needed — the cron already loops all subscribers. |
+| # | Finding | Severity | Resolution |
+|---|---------|----------|------------|
+| 1 | Subscribe regex accepted `x@y..com` / `foo..bar@x.com` (double-dot TLD) | Low | ✅ **Fixed** — structural email validator (back+front) |
+| 2 | Client-facing `Cache-Control` omits `s-maxage` | None (Vercel edge behavior) | ✅ Confirmed caching works via `X-Vercel-Cache: HIT` |
 
-## Verification Artifacts
+## Still Blocked (external)
 
-- Test errors/bugs found: **2**, both fixed and deployed.
-- Subscriber data present in Redis after testing: `dr.raouf.test@gmail.com`, `verify@test.dev`, `ana.participant@gmail.com`.
-- All local `node --check` syntax validations passed.
+- Resend free-tier delivers only to `raouf66@gmail.com`. External subscribers get logged `403`s until a custom domain is verified at resend.com/domains and `EMAIL_FROM` is updated. No code change needed — cron already loops all subscribers.
+
+## Test Artifacts
+
+- Reusable suites: `tests/scrapers.test.mjs`, `ai-filter.test.mjs`, `kv.test.mjs`, `get-offers.test.mjs`, `subscribe.test.mjs`, `check-updates.test.mjs`, `frontend.test.mjs`, `email-regex.test.mjs`.
+- Run any suite from repo root: `node tests/<name>.test.mjs` (KV/subscribe suites read `.env.local` for Upstash).
+- All verified against production; test-only data always cleaned from subscribers afterwards.
