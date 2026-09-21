@@ -129,9 +129,11 @@
 
     const API_URL = '/api/get-offers';
 
-    async function fetchOffers() {
+    async function fetchOffers(opts = {}) {
+      const { bypassCache = false } = opts;
       try {
-        const res = await fetch(API_URL);
+        const url = bypassCache ? `${API_URL}?_t=${Date.now()}` : API_URL;
+        const res = await fetch(url, bypassCache ? { cache: 'no-store' } : {});
         const data = await res.json();
         if (data.success) {
           allOffers = data.findings || [];
@@ -254,7 +256,18 @@
       });
     });
 
-    document.getElementById('refreshBtn').addEventListener('click', fetchOffers);
+    document.getElementById('refreshBtn').addEventListener('click', async (event) => {
+      const btn = event.currentTarget;
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Refreshing…';
+      try {
+        await fetchOffers({ bypassCache: true });
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    });
 
     const subscribeForm = document.getElementById('subscribeForm');
     const subscribeEmail = document.getElementById('subscribeEmail');
