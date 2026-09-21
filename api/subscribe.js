@@ -1,4 +1,5 @@
 import { kv } from '../src/utils/kv.js';
+import { sendWelcomeEmail } from '../src/services/email-notifier.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SUBSCRIBERS_KEY = 'subscribers';
@@ -21,12 +22,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    await kv.sadd(SUBSCRIBERS_KEY, email);
+    const added = await kv.sadd(SUBSCRIBERS_KEY, email);
     const subscribers = await kv.smembers(SUBSCRIBERS_KEY);
+
+    if (added === 1) {
+      try {
+        await sendWelcomeEmail(email);
+        console.log(`Welcome email sent to ${email}`);
+      } catch (welcomeError) {
+        console.error(`Welcome email failed for ${email}:`, welcomeError.message);
+      }
+    }
 
     res.status(200).json({
       success: true,
-      message: 'You are subscribed to Free AI Tracker alerts! 🎉',
+      message: added === 1 ? 'You are subscribed to Free AI Tracker alerts! 🎉' : 'You are already subscribed to Free AI Tracker alerts 📬',
       email,
       subscriberCount: subscribers.length,
     });

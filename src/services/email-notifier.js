@@ -74,17 +74,65 @@ function buildEmailHtml(findings) {
   `;
 }
 
-export async function sendNotification(findings, recipient) {
+function buildWelcomeEmailHtml(email) {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background: #f9fafb; font-family: Arial, Helvetica, sans-serif;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f9fafb; padding: 24px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #0369a1, #0ea5e9); padding: 32px 24px; text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🤖</div>
+                    <h1 style="margin: 0; font-family: Arial, sans-serif; font-size: 24px; font-weight: 700; color: #ffffff;">Welcome to Free AI Tracker!</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 24px;">
+                    <p style="margin: 0 0 16px; font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #374151;">Hey there,</p>
+                    <p style="margin: 0 0 16px; font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #374151;">You're all set! Your subscription to <strong>${email}</strong> is confirmed. 🎉</p>
+                    <p style="margin: 0 0 16px; font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #374151;">Every week we scan the web for the best <strong>free</strong> AI models, platforms, and open-source releases — and deliver a hand-picked digest straight to your inbox.</p>
+                    <p style="margin: 0 0 20px; font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #374151;">No spam. One curated email per week. You can unsubscribe anytime.</p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background: #ecfdf5; border-radius: 12px;" width="100%">
+                      <tr>
+                        <td style="padding: 16px; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.5; color: #065f46;">✅ Weekly digest of free AI models &amp; platforms<br>✅ Open-source releases &amp; new tooling<br>✅ Hand-picked, relevance-scored offers</td>
+                      </tr>
+                    </table>
+                    <p style="margin: 24px 0 0; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #6b7280;">Your first digest will arrive on the next scheduled run. See you in your inbox!</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background: #f3f4f6; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px; color: #6b7280;">© ${new Date().getFullYear()} Free AI Tracker</p>
+                    <p style="margin: 4px 0 0; font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; color: #374151;">Created by Dr Raouf Roshdy | Vol. 1.0</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+}
+
+export async function sendWelcomeEmail(email) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
-  const to = recipient || process.env.EMAIL_TO;
+  const to = email;
 
   if (!apiKey) {
-    console.warn('RESEND_API_KEY not set, skipping email');
+    console.warn('RESEND_API_KEY not set, skipping welcome email');
     return;
   }
   if (!to) {
-    console.warn('No recipient resolved (missing EMAIL_TO or subscriber list), skipping email');
+    console.warn('No recipient resolved for welcome email, skipping');
     return;
   }
 
@@ -93,16 +141,16 @@ export async function sendNotification(findings, recipient) {
   const { data, error } = await resend.emails.send({
     from,
     to,
-    subject: `Free AI Tracker - Daily Digest: ${findings.length} Offers`,
-    html: buildEmailHtml(findings),
+    subject: 'Welcome to Free AI Tracker! 🎉',
+    html: buildWelcomeEmailHtml(to),
   });
 
   if (error) {
-    throw new Error(`Resend rejected email to ${to}: ${error.message}`);
+    throw new Error(`Resend rejected welcome email to ${to}: ${error.message}`);
   }
   if (!data?.id) {
-    throw new Error(`Resend returned no message id for ${to} — send did not complete`);
+    throw new Error(`Resend returned no message id for welcome email to ${to} — send did not complete`);
   }
 }
 
-export { buildEmailHtml };
+export { buildEmailHtml, buildWelcomeEmailHtml };
