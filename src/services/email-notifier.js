@@ -1,6 +1,78 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function sourceBadge(source) {
+  const labels = {
+    github: '[GitHub]',
+    openrouter: '[OpenRouter]',
+    huggingface: '[HuggingFace]',
+    'vercel-ai-sdk': '[Vercel AI SDK]',
+  };
+  return labels[source] || `[${source}]`;
+}
+
+function buildEmailHtml(findings) {
+  const items = findings.map(f => {
+    const badge = sourceBadge(f.source);
+
+    return `
+      <tr>
+        <td style="padding: 0 0 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 12px; border-collapse: separate; overflow: hidden;">
+            <tr>
+              <td style="padding: 20px;">
+                <div style="margin-bottom: 10px;">
+                  <span style="display: inline-block; background: #0ea5e9; color: #ffffff; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px;">${badge}</span>
+                  ${typeof f.score === 'number' ? `<span style="display: inline-block; background: #f3f4f6; color: #4b5563; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; margin-left: 6px;">Relevance ${Math.round(f.score * 100)}%</span>` : ''}
+                </div>
+                <h3 style="margin: 0 0 8px; font-family: Arial, sans-serif; font-size: 16px; font-weight: 700; color: #111827;">${f.title}</h3>
+                <p style="margin: 0 0 14px; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.5; color: #4b5563;">${f.description || 'No description available'}</p>
+                <a href="${f.url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0284c7; color: #ffffff; font-family: Arial, sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; padding: 10px 18px; border-radius: 8px;">View Offer →</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background: #f9fafb; font-family: Arial, Helvetica, sans-serif;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f9fafb; padding: 24px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #0369a1, #0ea5e9); padding: 32px 24px; text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🤖</div>
+                    <h1 style="margin: 0; font-family: Arial, sans-serif; font-size: 24px; font-weight: 700; color: #ffffff;">Free AI Tracker - Daily Digest</h1>
+                    <p style="margin: 6px 0 0; font-family: Arial, sans-serif; font-size: 13px; color: #e0f2fe;">${findings.length} hand-picked AI offers · ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${items}</table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background: #f3f4f6; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px; color: #6b7280;">© ${new Date().getFullYear()} Free AI Tracker · <a href="https://github.com" target="_blank" style="color: #0284c7; text-decoration: none;">Dashboard</a></p>
+                    <p style="margin: 4px 0 0; font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; color: #374151;">Created by Dr Raouf Roshdy | Vol. 1.0</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+}
 
 export async function sendNotification(findings) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -8,25 +80,17 @@ export async function sendNotification(findings) {
   const to = process.env.EMAIL_TO;
 
   if (!apiKey || !to) {
-    console.warn('Email not configured, skipping notification');
+    if (!apiKey) console.warn('RESEND_API_KEY not set, skipping email');
+    if (!to) console.warn('EMAIL_TO not set, skipping email');
     return;
   }
-
-  const html = `
-    <h2>🤖 Free AI Tracker Updates (${findings.length} findings)</h2>
-    ${findings.map(f => `
-      <div style="margin-bottom: 16px; padding: 12px; border: 1px solid #eee; border-radius: 8px;">
-        <h3 style="margin: 0 0 8px;">${f.title}</h3>
-        <p style="margin: 0 0 8px; color: #666;">Source: ${f.source} | Score: ${(f.score * 100).toFixed(0)}%</p>
-        <a href="${f.url}" style="color: #0066cc;">View Details →</a>
-      </div>
-    `).join('')}
-  `;
 
   await resend.emails.send({
     from,
     to,
-    subject: `Free AI Tracker: ${findings.length} New Offers`,
-    html,
+    subject: `Free AI Tracker - Daily Digest: ${findings.length} Offers`,
+    html: buildEmailHtml(findings),
   });
 }
+
+export { buildEmailHtml };

@@ -132,9 +132,9 @@
       const emptyState = document.getElementById('emptyState');
 
       let filtered = allOffers;
-      if (currentFilter === 'free') filtered = allOffers.filter(o => o.source === 'openrouter' || o.source === 'replicate');
+      if (currentFilter === 'free') filtered = allOffers.filter(o => o.source === 'openrouter');
       else if (currentFilter === 'github') filtered = allOffers.filter(o => o.source === 'github');
-      else if (currentFilter === 'platform') filtered = allOffers.filter(o => ['huggingface', 'vercel', 'openai'].includes(o.source));
+      else if (currentFilter === 'platform') filtered = allOffers.filter(o => ['huggingface', 'vercel-ai-sdk'].includes(o.source));
 
       if (filtered.length === 0) {
         grid.innerHTML = '';
@@ -150,10 +150,8 @@
       const sourceColors = {
         github: 'bg-purple-500/20 text-purple-400',
         huggingface: 'bg-yellow-500/20 text-yellow-400',
-        vercel: 'bg-gray-500/20 text-gray-400',
-        openai: 'bg-green-500/20 text-green-400',
+        'vercel-ai-sdk': 'bg-gray-500/20 text-gray-400',
         openrouter: 'bg-blue-500/20 text-blue-400',
-        replicate: 'bg-orange-500/20 text-orange-400',
       };
       const sourceLabel = offer.source.charAt(0).toUpperCase() + offer.source.slice(1);
       const score = Math.round((offer.score || 0) * 100);
@@ -164,10 +162,10 @@
             <span class="px-2 py-1 text-xs font-medium rounded-full ${sourceColors[offer.source] || 'bg-dark-600 text-dark-300'}">
               ${sourceLabel}
             </span>
-            <span class="text-xs text-dark-500">${formatDate(offer.publishedAt)}</span>
+            <span class="text-xs text-dark-500">${formatDate(offer.date)}</span>
           </div>
           <h3 class="text-lg font-semibold text-white mb-2 line-clamp-2">${escapeHtml(offer.title)}</h3>
-          <p class="text-dark-400 text-sm mb-4 flex-1 line-clamp-3">${escapeHtml(offer.body || 'No description available')}</p>
+          <p class="text-dark-400 text-sm mb-4 flex-1 line-clamp-3">${escapeHtml(offer.description || 'No description available')}</p>
           <div class="flex items-center justify-between pt-4 border-t border-dark-700">
             <div class="flex items-center gap-2">
               <span class="text-xs text-dark-500">Score:</span>

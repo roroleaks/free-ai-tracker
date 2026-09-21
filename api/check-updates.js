@@ -5,24 +5,26 @@ import { scanFreeTiers } from '../src/scrapers/free-tier-scanner.js';
 import { filterAndScore } from '../src/services/ai-filter.js';
 import { sendNotification } from '../src/services/email-notifier.js';
 import { logger } from '../src/utils/logger.js';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   const startTime = Date.now();
   logger.info('Starting AI offer check...');
 
   try {
-    const [githubReleases, socialUpdates, freeTiers] = await Promise.allSettled([
+    const [githubReleases, socialUpdates, freeTiers] = await Promise.all([
       fetchGitHubReleases(),
       fetchSocialUpdates(),
       scanFreeTiers(),
     ]);
 
     const allFindings = [
-      ...(githubReleases.status === 'fulfilled' ? githubReleases.value : []),
-      ...(socialUpdates.status === 'fulfilled' ? socialUpdates.value : []),
-      ...(freeTiers.status === 'fulfilled' ? freeTiers.value : []),
-    ];
+      ...githubReleases,
+      ...socialUpdates,
+      ...freeTiers,
+    ].filter(Boolean);
 
     logger.info(`Collected ${allFindings.length} raw findings`);
 
@@ -43,8 +45,8 @@ export default async function handler(req, res) {
       findings: relevantFindings,
     };
 
-    await kv.set('latest_ai_offers', result);
-    logger.info('Saved offers to Vercel KV');
+    await redis.set('latest_ai_offers', result);
+    logger.info('Saved offers to Redis');
 
     const duration = Date.now() - startTime;
     logger.info(`Check completed in ${duration}ms`);
