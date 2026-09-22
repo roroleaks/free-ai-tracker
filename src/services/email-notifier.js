@@ -7,6 +7,7 @@ function sourceBadge(source) {
     github: '[GitHub]',
     openrouter: '[OpenRouter]',
     huggingface: '[HuggingFace]',
+    reddit: '[Reddit]',
     'vercel-ai-sdk': '[Vercel AI SDK]',
   };
   return labels[source] || `[${source}]`;

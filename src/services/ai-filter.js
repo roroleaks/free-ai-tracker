@@ -21,6 +21,7 @@ const SOURCE_BOOST = {
   openrouter: 0.1,
   huggingface: 0.1,
   'vercel-ai-sdk': 0.05,
+  reddit: 0.05,
   groq: 0.1,
   together: 0.1,
   google: 0.1,

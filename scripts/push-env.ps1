@@ -12,6 +12,7 @@ Get-Content ".env.local" | ForEach-Object {
 }
 
 $required = @("UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "BREVO_API_KEY", "EMAIL_FROM", "EMAIL_TO")
+$optional = @("GITHUB_TOKEN", "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET")
 $missing = $required | Where-Object { -not $fields[$_] }
 if ($missing) {
   Write-Host "ERROR: missing values in .env.local: $($missing -join ', ')"
@@ -28,6 +29,13 @@ $vc = "$env:APPDATA\npm\node_modules\vercel\dist\index.js"
 foreach ($key in $required) {
   Write-Host "Adding $key ..."
   $fields[$key] | & node $vc env add $key production --project free-ai-tracker --scope raouf12 2>&1 | Select-String "Added|Error|error"
+}
+
+foreach ($key in $optional) {
+  if ($fields[$key]) {
+    Write-Host "Adding $key ..."
+    $fields[$key] | & node $vc env add $key production --project free-ai-tracker --scope raouf12 2>&1 | Select-String "Added|Error|error"
+  }
 }
 
 Write-Host "--- Redeploying production ---"

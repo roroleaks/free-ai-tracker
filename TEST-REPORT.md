@@ -34,7 +34,7 @@ Live fetch, field uniformity (`title, description, url, source, date`), non-empt
 | `scanOpenRouter()` | ✅ PASS | **24 findings**, all `source=openrouter`, score-free pricing filter works |
 | `scanHuggingFaceServerless()` | ✅ PASS | **15 findings**, all warm/traced models, `source=huggingface` |
 | `free-tier-scanner.js` combined | ✅ PASS | **39 findings** (24 + 15); Groq/Together/Google skip gracefully (no keys → warn + `[]`, no crash) |
-| `social-monitor.js` | ✅ PASS | **50 findings** — HF blog RSS (10) + 8 repo releases (40), CDATA parsing + tag stripping intact |
+| `social-monitor.js` | ✅ PASS | **60 findings** — HF blog RSS (10) + 8 repo releases (40) + Reddit **(10)**, CDATA/tag/Atom parsing intact |
 | **Aggregation total** | ✅ PASS | All 5 entry points return uniform objects; 0 missing critical fields, 0 bad URLs, 0 bad dates |
 
 Suite: `tests/scrapers.test.mjs` → **ALL PASS** (~10s).
@@ -179,4 +179,5 @@ The subscriber set contains 3 addresses from earlier testing that hard/soft-boun
 - Reusable suites: `tests/scrapers.test.mjs`, `ai-filter.test.mjs`, `kv.test.mjs`, `get-offers.test.mjs`, `subscribe.test.mjs`, `check-updates.test.mjs`, `frontend.test.mjs`, `email-regex.test.mjs`.
 - Run any suite from repo root: `node tests/<name>.test.mjs` (KV/subscribe/check-updates suites read `.env.local` for Upstash).
 - All verified against production; test-only data always cleaned from subscribers afterwards.
+- **Reddit source** (`reddit`): 9 subreddits (`ChatGPT`, `ClaudeAI`, `GoogleGeminiAI`, `artificial`, `LocalLLaMA`, `SideProject`, `Entrepreneur`, `AppSumo`, `StudentDeals`) via `hot` posts. With optional `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` (free Reddit "script" app) it uses `oauth.reddit.com` (parallel, ~60 req/min). Without them it falls back to the public Atom `.rss` feed — best-effort and often rate-limited (429) from datacenter IPs, so subreddits may be intermittently missing. Source boost +0.05 (validated: `github` > `reddit`).
 - Local suite runs may print a trailing `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` — a harmless Windows fetch-teardown quirk after tests complete; all assertions already passed.
