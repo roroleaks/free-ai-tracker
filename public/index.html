@@ -105,6 +105,7 @@
             class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-primary-100 focus:outline-none focus:ring-2 focus:ring-white/50"
           />
           <button
+            id="subscribeBtn"
             type="submit"
             class="px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors whitespace-nowrap"
           >
@@ -335,6 +336,9 @@
     const subscribeForm = document.getElementById('subscribeForm');
     const subscribeEmail = document.getElementById('subscribeEmail');
     const subscribeStatus = document.getElementById('subscribeStatus');
+    const subscribeBtn = document.getElementById('subscribeBtn');
+    const SUBSCRIBE_BTN_LABEL = subscribeBtn.textContent.trim();
+    let subscribeInFlight = false;
 
     function setSubscribeStatus(message, isError = false) {
       subscribeStatus.textContent = message;
@@ -361,12 +365,17 @@
     subscribeForm.addEventListener('submit', async (event) => {
       event.preventDefault();
 
+      if (subscribeInFlight) return;
+
       const email = subscribeEmail.value.trim();
       if (!isValidEmail(email)) {
         setSubscribeStatus('Please enter a valid email address.', true);
         return;
       }
 
+      subscribeInFlight = true;
+      subscribeBtn.disabled = true;
+      subscribeBtn.textContent = 'Subscribing…';
       setSubscribeStatus('Subscribing…');
 
       try {
@@ -384,6 +393,10 @@
         }
       } catch (err) {
         setSubscribeStatus('Network error. Please try again.', true);
+      } finally {
+        subscribeInFlight = false;
+        subscribeBtn.disabled = false;
+        subscribeBtn.textContent = SUBSCRIBE_BTN_LABEL;
       }
     });
 

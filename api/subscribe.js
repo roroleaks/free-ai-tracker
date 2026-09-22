@@ -19,6 +19,10 @@ function isValidEmail(email) {
   return true;
 }
 
+function normalizeEmail(email) {
+  return email.trim().toLowerCase();
+}
+
 const SUBSCRIBERS_KEY = 'subscribers';
 
 export default async function handler(req, res) {
@@ -29,7 +33,7 @@ export default async function handler(req, res) {
   let email = '';
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    email = (body.email || '').trim().toLowerCase();
+    email = normalizeEmail(String(body.email || ''));
   } catch {
     return res.status(400).json({ success: false, error: 'Invalid JSON body' });
   }

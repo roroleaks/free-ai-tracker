@@ -63,5 +63,19 @@ check('stats panel (Total Scanned)', html.includes('id="statTotal"'));
 check('stats panel (Relevant Offers)', html.includes('id="statRelevant"'));
 check('stats panel (Last Updated)', html.includes('id="statTimestamp"'));
 
+console.log('\n=== 8. Duplicate-submission prevention ===');
+check('submit button has id', html.includes('id="subscribeBtn"'));
+check('in-flight guard flag', html.includes('let subscribeInFlight = false'));
+check('guard blocks concurrent submit', html.includes('if (subscribeInFlight) return'));
+check('button disabled after valid email', html.includes('subscribeBtn.disabled = true'));
+check('Subscribing label set', html.includes("subscribeBtn.textContent = 'Subscribing…'") || html.includes('subscribeBtn.textContent = "Subscribing'));
+check('status "Subscribing…" preserved', html.includes("setSubscribeStatus('Subscribing…')"));
+check('finally resets in-flight flag', /finally\s*{[^}]*subscribeInFlight = false/.test(html));
+check('finally re-enables button', /finally\s*{[^}]*subscribeBtn\.disabled = false/.test(html));
+check('finally restores label', /finally\s*{[^}]*subscribeBtn\.textContent = SUBSCRIBE_BTN_LABEL/.test(html));
+check('original button label cached', html.includes('const SUBSCRIBE_BTN_LABEL'));
+check('network error path retained', html.includes('Network error. Please try again.'));
+check('error read restores button (catch + finally)', html.includes('catch (err)') && html.includes('finally'));
+
 console.log(`\n=== FRONTEND TEST: ${passes} passed, ${failures} failed ===`);
 process.exit(failures ? 1 : 0);
