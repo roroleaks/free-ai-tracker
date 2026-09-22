@@ -15,6 +15,10 @@ async function get(path) {
   return fetch(`${BASE}${path}`, { method: 'GET', cache: 'no-store' });
 }
 
+async function getJson(path) {
+  return fetch(`${BASE}${path}`, { method: 'GET', headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+}
+
 console.log('=== Seed: subscribe a test email ===');
 const sub = await fetch(`${BASE}/api/subscribe`, {
   method: 'POST',
@@ -32,11 +36,11 @@ check('signing is deterministic', token === signEmail(TEST_EMAIL));
 check('different email => different token', token !== signEmail('other@test.dev'));
 
 console.log('\n=== Unsubscribe with invalid token rejected ===');
-const bad = await get(`/api/unsubscribe?email=${encodeURIComponent(TEST_EMAIL)}&token=deadbeef`);
+const bad = await getJson(`/api/unsubscribe?email=${encodeURIComponent(TEST_EMAIL)}&token=deadbeef`);
 const badBody = await bad.json();
 check('invalid token => 400', bad.status === 400 && badBody.success === false, `status=${bad.status}`);
 
-console.log('\n=== HTML landing page (Accept: text/html) with valid token ===');
+console.log('\n=== HTML landing page (default = HTML) with valid token ===');
 const html = await get(`/api/unsubscribe?email=${encodeURIComponent(TEST_EMAIL)}&token=${token}`);
 const htmlText = await html.text();
 check('valid link => 200', html.status === 200, `status=${html.status}`);
@@ -44,13 +48,13 @@ check('HTML page rendered', /<!DOCTYPE html>/i.test(htmlText));
 
 console.log('\n=== Unsubscribe removes member ===');
 const okUrl = `/api/unsubscribe?email=${encodeURIComponent(TEST_EMAIL)}&token=${token}`;
-const ok = await get(okUrl);
+const ok = await getJson(okUrl);
 const okBody = await ok.json();
 check('unsubscribe => 200', ok.status === 200, `status=${ok.status}`);
 check('unsubscribe success=true', okBody.success === true, JSON.stringify(okBody));
 
 console.log('\n=== Idempotent / already gone ===');
-const again = await get(okUrl);
+const again = await getJson(okUrl);
 const againBody = await again.json();
 check('repeat unsubscribe still succeeds', again.status === 200 && againBody.success === true, JSON.stringify(againBody));
 
