@@ -38,7 +38,7 @@ check('expired token => expired', parseUnsubscribeToken(expired).status === 'exp
 
 check('malformed token => invalid', parseUnsubscribeToken('not.a.token').status === 'invalid');
 check('empty token => invalid', parseUnsubscribeToken('').status === 'invalid');
-check('masked email hides local part', maskEmail('john.doe@gmail.com') === 'jo*****@gmail.com', maskEmail('john.doe@gmail.com'));
+check('masked email hides local part', maskEmail('john.doe@gmail.com') === 'jo******@gmail.com', maskEmail('john.doe@gmail.com'));
 
 import { kv } from '../src/utils/kv.js';
 

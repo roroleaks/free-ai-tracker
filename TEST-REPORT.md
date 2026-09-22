@@ -19,8 +19,10 @@
 | 4 | Offers API | `get-offers.js` (JSON + edge cache) | ✅ PASS (16 assertions, 1 confirmed false negative) |
 | 4 | Subscribe API | `subscribe.js` validation/dup/welcome | ✅ PASS (20 assertions) |
 | 4 | Subscribe API | `subscribe.js` duplicate-submission prevention (idempotency) | ✅ PASS (17 assertions) |
+| 4 | Unsubscribe API | `unsubscribe.js` signed expiry token + one-click remove | ✅ PASS (34 assertions) |
+| 4 | Manage API | `manage.js` manage-link flow (no existence leak) | ✅ PASS (live smoke + e2e) |
 | 5 | Cron & Email | `check-updates.js` full pipeline + **Brevo delivery** | ✅ PASS (8 assertions) |
-| 6 | Frontend | All UI features in served HTML | ✅ PASS (36 assertions) |
+| 6 | Frontend | All UI features in served HTML | ✅ PASS (55 assertions) |
 | — | **Overall** | **Full pipeline** | ✅ **PASS — external emails now delivered to every subscriber** |
 
 ---
@@ -118,7 +120,29 @@ Suite: `tests/subscribe.test.mjs` → **20/20 passed**. Test emails cleaned from
 | Frontend in-flight guard | ✅ PASS | `subscribeInFlight` flag blocks concurrent submits; button disabled + `Subscribing…` after client-valid email |
 | Frontend finally-restore (success/network/JSON error) | ✅ PASS | `finally` re-enables button + restores original label; `Network error. Please try again.` retained |
 
-Suite: `tests/subscribe-idempotency.test.mjs` → **17/17 passed** (live API + local KV race). Frontend wiring asserted in `tests/frontend.test.mjs` → **48/48 passed**.
+Suite: `tests/subscribe-idempotency.test.mjs` → **17/17 passed** (live API + local KV race). Frontend wiring asserted in `tests/frontend.test.mjs` → **55/55 passed**.
+
+## 4D. Unsubscribe & Manage Lifecycle (`api/unsubscribe.js`, `api/manage.js`, `src/utils/unsubscribe.js`)
+
+Privacy-first, token-only unsubscription (commit `c8c2da4`). Every outbound subscription email now carries a one-click link built by `buildUnsubscribeUrl`.
+
+| Test | Result | Evidence |
+|------|--------|----------|
+| **Signed expiring token** | ✅ PASS | `base64url(email.exp)` `.` `HMAC-SHA256(secret, payload)`; secret = `UPSTASH_REDIS_REST_TOKEN \|\| BREVO_API_KEY \|\| 'free-ai-tracker'`; default TTL **30 days** (`UNSUBSCRIBE_TOKEN_TTL_DAYS`) |
+| **No raw email in URL** | ✅ PASS | link is `?token=` only; token is opaque (email not recoverable from URL), `email=` absent |
+| Token parsing | ✅ PASS | valid → original (lowercased) email; different address → different token |
+| **Tamper / malformed / nil** | ✅ PASS | tampered sig/payload, single-part, garbage, empty, `null`, `undefined` → `invalid` |
+| **Expiry** | ✅ PASS | token minted 1s in the past → `expired` |
+| Invalid/expired never reveal existence | ✅ PASS | always `400` generic (JSON + HTML pages), no email echo; production HTML page has actionable feedback |
+| **One-click unsubscribe** | ✅ PASS | `GET /api/unsubscribe?token=` → `200 success=true`, masked-email success page + resubscribe link, `srem` removes from `subscribers` |
+| **Idempotent repeat** | ✅ PASS | already-inactive address still `200 success` (no error, never re-reveals) |
+| **Manage endpoint** | ✅ PASS | `POST /api/manage` → generic `"If that address is subscribed…"` (no existence disclosure); sends manage-link email only when subscribed; GET → `405` |
+| Every outbound email embeds the URL | ✅ PASS | digest + welcome + manage templates all token-based (asserted via mocked-mail harness + `tests/email-html.test.mjs`) |
+| **Mocked-provider E2E** | ✅ PASS | local HTTP capture/Brevo seam (`BREVO_API_URL` overridable): subscribe → welcome captured → extract token → GET link → KV inactive → tampered rejected → cleanup. **15/15** |
+| Token unit spec | ✅ PASS | `tests/unsubscribe-token.test.mjs` → **21/21** |
+| Live production unsubscribe | ✅ PASS | `tests/unsubscribe.test.mjs` → **34/34** (seed → subscribe → unsubscribe → KV check → cleanup) |
+
+`src/utils/kv.js` gained `sismember` for active-subscriber checks. Frontend added "Manage or unsubscribe" link + form (visible per-account `manageStatus` feedback, no other subscriber data).
 
 ## 5. Cron & Email Dispatch (`api/check-updates.js` + `email-notifier.js` via **Brevo**)
 
@@ -162,7 +186,7 @@ Final cron run `2026-09-21 23:38 EET`, subject **"Free AI Tracker - Daily Digest
 | Email validator (frontend) | ✅ PASS | `isValidEmail()` helper present in deployed HTML |
 | Interactive wiring | ✅ PASS | Cache-busting refresh, subscribe form → `/api/subscribe`, 5-min auto-refresh, stats panel |
 
-Suite: `tests/frontend.test.mjs` → **48/48 assertions passed**.
+Suite: `tests/frontend.test.mjs` → **55/55 assertions passed**. (3 more lines added)
 
 ---
 
@@ -196,8 +220,9 @@ The subscriber set contains 3 addresses from earlier testing that hard/soft-boun
 
 ## Test Artifacts
 
-- Reusable suites: `tests/scrapers.test.mjs`, `ai-filter.test.mjs`, `kv.test.mjs`, `get-offers.test.mjs`, `subscribe.test.mjs`, `check-updates.test.mjs`, `frontend.test.mjs`, `email-regex.test.mjs`.
-- Run any suite from repo root: `node tests/<name>.test.mjs` (KV/subscribe/check-updates suites read `.env.local` for Upstash).
+- Reusable suites: `tests/scrapers.test.mjs`, `ai-filter.test.mjs`, `kv.test.mjs`, `get-offers.test.mjs`, `subscribe.test.mjs`, `subscribe-idempotency.test.mjs`, `unsubscribe.test.mjs`, `unsubscribe-token.test.mjs`, `unsubscribe-e2e.test.mjs`, `email-html.test.mjs`, `check-updates.test.mjs`, `frontend.test.mjs`, `email-regex.test.mjs`.
+- Run any suite from repo root: `node tests/<name>.test.mjs` (KV/subscribe/check-updates/unsubscribe suites read `.env.local` for Upstash).
+- `unsubscribe-e2e.test.mjs` is fully hermetic: local HTTP server mocks Brevo (`BREVO_API_URL` seam) while using real Upstash, so it can run before any deploy.
 - All verified against production; test-only data always cleaned from subscribers afterwards.
 - **Reddit source** (`reddit`): 9 subreddits (`ChatGPT`, `ClaudeAI`, `GoogleGeminiAI`, `artificial`, `LocalLLaMA`, `SideProject`, `Entrepreneur`, `AppSumo`, `StudentDeals`) via `hot` posts. With optional `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` (free Reddit "script" app) it uses `oauth.reddit.com` (parallel, ~60 req/min). Without them it falls back to the public Atom `.rss` feed — best-effort and often rate-limited (429) from datacenter IPs, so subreddits may be intermittently missing. Source boost +0.05 (validated: `github` > `reddit`).
 - Local suite runs may print a trailing `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` — a harmless Windows fetch-teardown quirk after tests complete; all assertions already passed.
