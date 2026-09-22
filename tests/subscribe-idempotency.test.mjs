@@ -21,7 +21,7 @@ async function post(email) {
 }
 
 function countSubscribed(responses) {
-  return responses.filter(r => /subscribed to Free AI Tracker alerts/.test(r.message || '')).length;
+  return responses.filter(r => /^You are subscribed to Free AI Tracker alerts/.test(r.message || '')).length;
 }
 
 console.log('=== Baseline: current subscriber count ===');
