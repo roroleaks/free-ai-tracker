@@ -72,5 +72,3 @@ export const kv = {
     return memorySets.has(key) ? memorySets.get(key).size : 0;
   },
 };
-
-export { redis };

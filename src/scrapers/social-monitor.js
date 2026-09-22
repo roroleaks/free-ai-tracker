@@ -254,7 +254,3 @@ export async function fetchSocialUpdates() {
 
   return findings;
 }
-
-export function getSourceNames() {
-  return [['huggingface', 'HuggingFace'], ['vercel-ai-sdk', 'Vercel AI SDK'], ['reddit', 'Reddit']];
-}
