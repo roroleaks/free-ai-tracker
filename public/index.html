@@ -113,6 +113,26 @@
           </button>
         </form>
       </div>
+      <div class="mt-4 pt-4 border-t border-white/10">
+        <p class="text-primary-100 text-sm">Already subscribed? <a href="#" id="manageLink" class="text-white underline font-medium">Manage or unsubscribe</a> — we'll email you a one-time link.</p>
+        <form id="manageForm" class="hidden flex-col sm:flex-row gap-3 mt-2 md:w-1/2" novalidate>
+          <input
+            id="manageEmail"
+            type="email"
+            required
+            placeholder="you@example.com"
+            class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-primary-100 focus:outline-none focus:ring-2 focus:ring-white/50"
+          />
+          <button
+            id="manageBtn"
+            type="submit"
+            class="px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors whitespace-nowrap"
+          >
+            Send Manage Link
+          </button>
+        </form>
+        <p id="manageStatus" class="text-primary-100 text-sm mt-2 hidden"></p>
+      </div>
     </div>
 
     <div class="flex items-center justify-between mb-6">
@@ -402,6 +422,59 @@
 
     fetchOffers();
     setInterval(fetchOffers, 5 * 60 * 1000);
+
+    const manageLink = document.getElementById('manageLink');
+    const manageForm = document.getElementById('manageForm');
+    const manageEmail = document.getElementById('manageEmail');
+    const manageBtn = document.getElementById('manageBtn');
+    const manageStatus = document.getElementById('manageStatus');
+
+    function setManageStatus(message, isError = false) {
+      manageStatus.textContent = message;
+      manageStatus.classList.remove('hidden', 'text-red-300', 'text-primary-100');
+      manageStatus.classList.add(isError ? 'text-red-300' : 'text-primary-100');
+    }
+
+    manageLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      manageForm.classList.toggle('hidden');
+      if (!manageForm.classList.contains('hidden')) manageEmail.focus();
+    });
+
+    manageForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (manageBtn.disabled) return;
+
+      const email = manageEmail.value.trim();
+      if (!isValidEmail(email)) {
+        setManageStatus('Please enter a valid email address.', true);
+        return;
+      }
+
+      manageBtn.disabled = true;
+      manageBtn.textContent = 'Sending…';
+      setManageStatus('Sending…');
+
+      try {
+        const res = await fetch('/api/manage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setManageStatus(data.message || 'Manage link sent.');
+        } else {
+          setManageStatus(data.error || 'Request failed. Please try again.', true);
+        }
+      } catch (err) {
+        setManageStatus('Network error. Please try again.', true);
+      } finally {
+        manageBtn.disabled = false;
+        manageBtn.textContent = 'Send Manage Link';
+      }
+    });
   </script>
 </body>
 </html>

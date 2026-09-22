@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 import { buildUnsubscribeUrl } from '../utils/unsubscribe.js';
 
-const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const BREVO_API_URL = process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email';
 
 const SOURCE_META = {
   github: { label: 'GitHub', color: '#24292f', light: '#f6f8fa' },
@@ -288,4 +288,66 @@ export async function sendNotification(findings, recipient) {
   });
 }
 
-export { buildEmailHtml, buildWelcomeEmailHtml };
+function buildManageEmailHtml(email) {
+  const subUrl = buildUnsubscribeUrl(email);
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background: #f3f4f6; font-family: Arial, Helvetica, sans-serif;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f3f4f6; padding: 24px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #0ea5e9 100%); padding: 36px 28px; text-align: center;">
+                    <h1 style="margin: 0; font-family: Arial, sans-serif; font-size: 24px; font-weight: 800; color: #ffffff;">Manage Your Subscription</h1>
+                    <p style="margin: 6px 0 0; font-family: Arial, sans-serif; font-size: 13px; color: #bae6fd;">Free AI Tracker · ${email}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 28px 28px 24px;">
+                    <p style="margin: 0 0 16px; font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #374151;">You asked for a way to manage your Free AI Tracker subscription. Here it is:</p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background: #f0f9ff; border-radius: 12px;" width="100%">
+                      <tr>
+                        <td style="padding: 18px; text-align: center;">
+                          <a href="${subUrl}" style="display: inline-block; background: #dc2626; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px;">Unsubscribe from weekly digest</a>
+                          <p style="margin: 12px 0 0; font-family: Arial, sans-serif; font-size: 12px; color: #64748b;">One click and you're done — no login needed.</p>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin: 20px 0 0; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #6b7280;">This one-time link is private and can't be used by anyone else. If you didn't request this, you can safely ignore this email.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0 0 6px; font-family: Arial, sans-serif; font-size: 12px; font-weight: 700; color: #334155;">Free AI Tracker</p>
+                    <p style="margin: 0 0 8px; font-family: Arial, sans-serif; font-size: 12px; color: #94a3b8;">Curated by Dr Raouf Roshdy · © ${new Date().getFullYear()}</p>
+                    <a href="${subUrl}" style="color: #0284c7; font-family: Arial, sans-serif; font-size: 11px; text-decoration: underline;">Unsubscribe anytime</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+}
+
+export async function sendManageEmail(email) {
+  const from = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
+
+  await sendBrevo({
+    from,
+    to: email,
+    subject: 'Manage your Free AI Tracker subscription',
+    html: buildManageEmailHtml(email),
+  });
+}
+
+export { buildEmailHtml, buildWelcomeEmailHtml, buildManageEmailHtml };

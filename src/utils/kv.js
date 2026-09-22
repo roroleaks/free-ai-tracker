@@ -59,6 +59,12 @@ export const kv = {
     memoryWarning(key);
     return 1;
   },
+  async sismember(key, value) {
+    if (redis) {
+      return await redis.sismember(key, value);
+    }
+    return memorySets.has(key) ? (memorySets.get(key).has(value) ? 1 : 0) : 0;
+  },
 };
 
 export { redis };

@@ -39,8 +39,8 @@ console.log('=== Email builder: structure ===');
 check('digest shell is HTML', /<!DOCTYPE html>/i.test(html));
 check('3 offer cards rendered', (html.match(/View offer/g) || []).length === 3, String((html.match(/View offer/g) || []).length));
 check('abstract excerpt included', /subscription for abstract/i.test(html) || /anthropic commonsancyabstract/.test(html) || /free API credits/.test(html), 'excerpt should contain description text');
-check('unsubscribe link present', html.includes('/api/unsubscribe?email='), 'missing unsubscribe URL');
-check('unsubscribe link signed w/ recipient', html.includes(encodeURIComponent('user@test.dev')));
+check('unsubscribe link present (token-based)', html.includes('/api/unsubscribe?token='), 'missing token unsubscribe URL');
+check('unsubscribe link does NOT expose raw email', !html.includes('user@test.dev'));
 check('NEW badge for isNew', html.includes('>NEW</span>'));
 check('relevance score badge', html.includes('Relevance 94%'));
 check('site name shown', /github\.com|education\.github\.com|reddit\.com/.test(html));
@@ -53,13 +53,12 @@ console.log('\n=== Welcome email ===');
 const welcome = buildWelcomeEmailHtml('new@user.dev');
 check('welcome is HTML', /<!DOCTYPE html>/i.test(welcome));
 check('welcome shows email', welcome.includes('new@user.dev'));
-check('welcome has unsubscribe link', welcome.includes('/api/unsubscribe?email=') && welcome.includes('Unsubscribe anytime'));
+check('welcome has token unsubscribe link', welcome.includes('/api/unsubscribe?token=') && welcome.includes('Unsubscribe anytime'));
 
 console.log('\n=== Unsubscribe URL util ===');
 const url = buildUnsubscribeUrl('a@b.dev');
-check('url is absolute & signed', url.startsWith('https://') && url.includes('token='));
-const badUrl = buildUnsubscribeUrl('a@b.dev');
-check('url deterministic per email', url === badUrl);
+check('url is absolute & token-signed', url.startsWith('https://') && url.includes('token='));
+check('url does not expose raw email', !url.includes('a@b.dev') && !url.includes('%40') && !url.includes('a%40b'));
 
 console.log(`\n=== EMAIL-HTML TEST: ${passes} passed, ${failures} failed ===`);
 process.exit(failures ? 1 : 0);

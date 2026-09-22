@@ -77,5 +77,14 @@ check('original button label cached', html.includes('const SUBSCRIBE_BTN_LABEL')
 check('network error path retained', html.includes('Network error. Please try again.'));
 check('error read restores button (catch + finally)', html.includes('catch (err)') && html.includes('finally'));
 
+console.log('\n=== 9. Manage/unsubscribe path ===');
+check('manage link present', html.includes('id="manageLink"'));
+check('manage form present', html.includes('id="manageForm"'));
+check('manage email input present', html.includes('id="manageEmail"'));
+check('manage posts to /api/manage', html.includes("'/api/manage'"));
+check('manage generic message text', html.includes("we'll email you a one-time link"));
+check('manage button label', html.includes('Send Manage Link'));
+check('manage shows no other-subscriber data', !/other@|list of|all subscribers/i.test(html));
+
 console.log(`\n=== FRONTEND TEST: ${passes} passed, ${failures} failed ===`);
 process.exit(failures ? 1 : 0);
