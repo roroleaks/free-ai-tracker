@@ -54,8 +54,8 @@ export default async function handler(req, res) {
     console.error('Unsubscribe failed:', error);
   }
 
-  const acceptsHtml = (req.headers.accept || '').includes('text/html');
-  if (acceptsHtml) {
+  const wantsJson = (req.headers.accept || '').includes('application/json') || req.query.format === 'json';
+  if (!wantsJson) {
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(buildUnsubscribePage(success, email));
   }
