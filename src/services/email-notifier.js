@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { buildUnsubscribeUrl } from '../utils/unsubscribe.js';
+import { buildUnsubscribeUrl, maskEmail } from '../utils/unsubscribe.js';
 
 const BREVO_API_URL = process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email';
 
@@ -227,6 +227,7 @@ function buildWelcomeEmailHtml(email) {
 
 async function sendBrevo({ from, to, subject, html }) {
   const apiKey = process.env.BREVO_API_KEY;
+  const maskedTo = maskEmail(to);
 
   if (!apiKey) {
     console.warn('BREVO_API_KEY not set, skipping email');
@@ -241,27 +242,42 @@ async function sendBrevo({ from, to, subject, html }) {
   const senderName = match ? match[1].trim() : '';
   const senderEmail = match ? match[2] : from;
 
-  const res = await fetch(BREVO_API_URL, {
-    method: 'POST',
-    headers: {
-      'api-key': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      sender: { name: senderName, email: senderEmail },
-      to: [{ email: to }],
-      subject,
-      htmlContent: html,
-    }),
-  });
+  const timeoutMs = Number(process.env.EMAIL_TIMEOUT_MS || 10000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res;
+  try {
+    res = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+      signal: controller.signal,
+    });
+  } catch (fetchError) {
+    if (fetchError.name === 'AbortError') {
+      throw new Error(`Mail provider request timed out after ${timeoutMs}ms`);
+    }
+    throw new Error(`Mail provider request failed for ${maskedTo} (cause=${fetchError.name || 'error'})`);
+  } finally {
+    clearTimeout(timer);
+  }
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(`Brevo rejected email to ${to}: ${data.message || res.statusText}`);
+    throw new Error(`Mail provider rejected send to ${maskedTo} (status=${res.status})`);
   }
   if (!data.messageId) {
-    throw new Error(`Brevo returned no message id for ${to} — send did not complete`);
+    throw new Error(`Mail provider returned no message id for ${maskedTo} — send did not complete`);
   }
 }
 

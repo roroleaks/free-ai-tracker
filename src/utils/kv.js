@@ -65,6 +65,12 @@ export const kv = {
     }
     return memorySets.has(key) ? (memorySets.get(key).has(value) ? 1 : 0) : 0;
   },
+  async scard(key) {
+    if (redis) {
+      return await redis.scard(key);
+    }
+    return memorySets.has(key) ? memorySets.get(key).size : 0;
+  },
 };
 
 export { redis };

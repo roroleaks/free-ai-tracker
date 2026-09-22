@@ -1,4 +1,7 @@
+import crypto from 'node:crypto';
 import { kv } from '../src/utils/kv.js';
+import { logger } from '../src/utils/logger.js';
+import { maskEmail } from '../src/utils/unsubscribe.js';
 import { sendManageEmail } from '../src/services/email-notifier.js';
 
 const SUBSCRIBERS_KEY = 'subscribers';
@@ -24,7 +27,10 @@ function isValidEmail(email) {
 }
 
 export default async function handler(req, res) {
+  const requestId = crypto.randomUUID();
+
   if (req.method !== 'POST') {
+    logger.warn('manage rejected', { requestId, event: 'method_not_allowed' });
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
@@ -33,10 +39,12 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     email = normalizeEmail(body.email);
   } catch {
+    logger.warn('manage rejected', { requestId, event: 'invalid_json' });
     return res.status(400).json({ success: false, error: 'Invalid JSON body' });
   }
 
   if (!isValidEmail(email)) {
+    logger.warn('manage rejected', { requestId, event: 'invalid_email', emailMasked: email.includes('@') ? maskEmail(email) : '' });
     return res.status(400).json({ success: false, error: 'Please enter a valid email address' });
   }
 
@@ -48,14 +56,14 @@ export default async function handler(req, res) {
     if (isSubscribed) {
       try {
         await sendManageEmail(email);
-        console.log(`Manage link emailed to ${email}`);
+        logger.info('manage link sent', { requestId, event: 'manage_link_sent', emailMasked: maskEmail(email) });
       } catch (error) {
-        console.error(`Manage email failed for ${email}:`, error.message);
+        logger.error('manage email failed', { requestId, event: 'manage_email_failed', emailMasked: maskEmail(email), error: error.message });
       }
     }
     return res.status(200).json({ success: true, message: generic });
   } catch (error) {
-    console.error('Failed to check subscription:', error);
+    logger.error('manage storage failed', { requestId, event: 'storage_failed', error: error.message });
     return res.status(500).json({ success: false, error: 'Something went wrong. Please try again later.' });
   }
 }

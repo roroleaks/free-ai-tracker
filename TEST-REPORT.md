@@ -122,6 +122,24 @@ Suite: `tests/subscribe.test.mjs` → **20/20 passed**. Test emails cleaned from
 
 Suite: `tests/subscribe-idempotency.test.mjs` → **17/17 passed** (live API + local KV race). Frontend wiring asserted in `tests/frontend.test.mjs` → **55/55 passed**.
 
+## 4C2. Subscribe Endpoint Hardening (retries, concurrency, provider failures)
+
+Storage, mail, and logging audit of `POST /api/subscribe` (commit pending). Schema is an Upstash Redis SET of canonical (trimmed+lowercased) addresses; `SADD` is the atomic unique constraint; Brevo is the mail provider.
+
+| Requirement | Implementation | Verified |
+|------|--------|----------|
+| **Canonical email normalization (lookup + storage)** | `normalizeEmail()` = trim + lowercase; used for SADD/SISMEMBER/response | ✅ aware of case + whitespace variants in KV |
+| **Atomic unique constraint / transaction-safe upsert** | Redis `SADD` returns `1` only for the first concurrent writer; all others follow the already-active path | ✅ 3 parallel identical POSTs → exactly one "subscribed" |
+| **Idempotent concurrent identical requests** | second+ writers get `added===0` → 200 "already subscribed" with normalized email; no re-add | ✅ exactly one record + one welcome |
+| **No duplicate confirmation when already active** | welcome email sent **only** when `added===1` (fresh SADD) | ✅ case/whitespace/sequential duplicates → single welcome |
+| **Provider timeout is safe** | `sendBrevo` now aborts via `AbortController` after `EMAIL_TIMEOUT_MS` (default 10000); subscription stays durable; pending-welcome flag stays set; retry returns "already subscribed" and **never** re-sends | ✅ hang mode → 200 in <1.5s, 1 mail attempt total, 0 resends on retry |
+| **Provider failure is safe** | `sendBrevo` throws masked, PII-free errors; subscriber kept; welcome marked unconfirmed (`subscribers:pending`) | ✅ HTTP 500 provider → 200 success + flagged pending; recovery retry sends nothing |
+| **Structured logs + request IDs, no raw email/token** | each request gets `crypto.randomUUID()`; `logger` emits `{requestId, event, emailMasked, ...}`; raw addresses and tokens never logged (masked in user-facing paths too) | ✅ redaction assertions on captured console output |
+
+Additional changes: `kv.scard` (atomic count, replaces full `smembers(...).length`); `api/unsubscribe.js` clears `subscribers:pending` on unsubscribe so a resubscribe is treated as fresh; `api/manage.js` migrated to structured masked logging.
+
+Suite: `tests/subscribe-hardening.test.mjs` → **44/44 passed** (hermetic mock Brevo via `BREVO_API_URL` seam + real Upstash KV).
+
 ## 4D. Unsubscribe & Manage Lifecycle (`api/unsubscribe.js`, `api/manage.js`, `src/utils/unsubscribe.js`)
 
 Privacy-first, token-only unsubscription (commit `c8c2da4`). Every outbound subscription email now carries a one-click link built by `buildUnsubscribeUrl`.
@@ -220,9 +238,9 @@ The subscriber set contains 3 addresses from earlier testing that hard/soft-boun
 
 ## Test Artifacts
 
-- Reusable suites: `tests/scrapers.test.mjs`, `ai-filter.test.mjs`, `kv.test.mjs`, `get-offers.test.mjs`, `subscribe.test.mjs`, `subscribe-idempotency.test.mjs`, `unsubscribe.test.mjs`, `unsubscribe-token.test.mjs`, `unsubscribe-e2e.test.mjs`, `email-html.test.mjs`, `check-updates.test.mjs`, `frontend.test.mjs`, `email-regex.test.mjs`.
+- Reusable suites: `tests/scrapers.test.mjs`, `ai-filter.test.mjs`, `kv.test.mjs`, `get-offers.test.mjs`, `subscribe.test.mjs`, `subscribe-idempotency.test.mjs`, `subscribe-hardening.test.mjs`, `unsubscribe.test.mjs`, `unsubscribe-token.test.mjs`, `unsubscribe-e2e.test.mjs`, `email-html.test.mjs`, `check-updates.test.mjs`, `frontend.test.mjs`, `email-regex.test.mjs`.
 - Run any suite from repo root: `node tests/<name>.test.mjs` (KV/subscribe/check-updates/unsubscribe suites read `.env.local` for Upstash).
-- `unsubscribe-e2e.test.mjs` is fully hermetic: local HTTP server mocks Brevo (`BREVO_API_URL` seam) while using real Upstash, so it can run before any deploy.
+- `unsubscribe-e2e.test.mjs` and `subscribe-hardening.test.mjs` are fully hermetic: local HTTP server mocks Brevo (`BREVO_API_URL` seam) while using real Upstash, so they can run before any deploy. Run all KV-mutating suites **sequentially** — parallel runs race the shared `subscribers` set and produce false count failures.
 - All verified against production; test-only data always cleaned from subscribers afterwards.
 - **Reddit source** (`reddit`): 9 subreddits (`ChatGPT`, `ClaudeAI`, `GoogleGeminiAI`, `artificial`, `LocalLLaMA`, `SideProject`, `Entrepreneur`, `AppSumo`, `StudentDeals`) via `hot` posts. With optional `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` (free Reddit "script" app) it uses `oauth.reddit.com` (parallel, ~60 req/min). Without them it falls back to the public Atom `.rss` feed — best-effort and often rate-limited (429) from datacenter IPs, so subreddits may be intermittently missing. Source boost +0.05 (validated: `github` > `reddit`).
 - Local suite runs may print a trailing `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` — a harmless Windows fetch-teardown quirk after tests complete; all assertions already passed.

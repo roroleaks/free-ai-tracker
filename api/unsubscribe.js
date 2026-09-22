@@ -2,6 +2,7 @@ import { kv } from '../src/utils/kv.js';
 import { parseUnsubscribeToken, maskEmail, SITE_URL } from '../src/utils/unsubscribe.js';
 
 const SUBSCRIBERS_KEY = 'subscribers';
+const WELCOME_PENDING_KEY = 'subscribers:pending';
 
 function page(title, bodyHtml, kind = 'info') {
   const icon = kind === 'success' ? '✅' : kind === 'error' ? '⚠️' : '🔒';
@@ -57,6 +58,7 @@ export default async function handler(req, res) {
   const email = result.email;
   try {
     const removed = await kv.srem(SUBSCRIBERS_KEY, email);
+    await kv.srem(WELCOME_PENDING_KEY, email);
     console.log(`Unsubscribed ${maskEmail(email)} (setRemoved=${removed})`);
   } catch (error) {
     console.error('Unsubscribe storage failed:', error);
