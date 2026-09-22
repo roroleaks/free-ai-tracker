@@ -3,6 +3,8 @@ import 'dotenv/config';
 import { fetchGitHubReleases } from '../src/scrapers/github-rss.js';
 import { fetchSocialUpdates } from '../src/scrapers/social-monitor.js';
 import { scanFreeTiers, scanOpenRouter, scanHuggingFaceServerless } from '../src/scrapers/free-tier-scanner.js';
+import { fetchAifreeOffers } from '../src/scrapers/aifree-rss.js';
+import { fetchStudentPackOffers } from '../src/scrapers/student-pack.js';
 
 const REQUIRED_FIELDS = ['title', 'description', 'url', 'source', 'date'];
 
@@ -50,6 +52,16 @@ try {
   const all = await scanFreeTiers();
   allPass = validateFindings('free-tier-scanner (combined)', all) && allPass;
 } catch (e) { allPass = false; console.log('[free-tier-scanner] THREW:', e.message); }
+
+try {
+  const aifree = await fetchAifreeOffers();
+  allPass = validateFindings('aifree-rss', aifree) && allPass;
+} catch (e) { allPass = false; console.log('[aifree-rss] THREW:', e.message); }
+
+try {
+  const pack = await fetchStudentPackOffers();
+  allPass = validateFindings('student-pack', pack) && allPass;
+} catch (e) { allPass = false; console.log('[student-pack] THREW:', e.message); }
 
 console.log(`\n=== SCRAPER SUITE (${(Date.now() - t0) / 1000}s): ` + (allPass ? 'ALL PASS' : 'FAILURES') + ' ===');
 process.exit(allPass ? 0 : 1);

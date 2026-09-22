@@ -22,6 +22,8 @@ const SOURCE_BOOST = {
   huggingface: 0.1,
   'vercel-ai-sdk': 0.05,
   reddit: 0.05,
+  aifree: 0.15,
+  'student-pack': 0.1,
   groq: 0.1,
   together: 0.1,
   google: 0.1,

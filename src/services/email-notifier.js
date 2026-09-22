@@ -8,6 +8,8 @@ function sourceBadge(source) {
     openrouter: '[OpenRouter]',
     huggingface: '[HuggingFace]',
     reddit: '[Reddit]',
+    aifree: '[AI Free]',
+    'student-pack': '[Student Pack]',
     'vercel-ai-sdk': '[Vercel AI SDK]',
   };
   return labels[source] || `[${source}]`;

@@ -199,7 +199,7 @@
       let filtered = allOffers;
       if (currentFilter === 'free') filtered = allOffers.filter(o => o.source === 'openrouter');
       else if (currentFilter === 'github') filtered = allOffers.filter(o => o.source === 'github');
-      else if (currentFilter === 'platform') filtered = allOffers.filter(o => ['huggingface', 'vercel-ai-sdk'].includes(o.source));
+      else if (currentFilter === 'platform') filtered = allOffers.filter(o => ['huggingface', 'vercel-ai-sdk', 'aifree', 'student-pack'].includes(o.source));
       else if (currentFilter === 'new') filtered = allOffers.filter(o => isNewOffer(o));
 
       if (filtered.length === 0) {

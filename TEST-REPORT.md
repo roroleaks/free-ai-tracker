@@ -35,7 +35,9 @@ Live fetch, field uniformity (`title, description, url, source, date`), non-empt
 | `scanHuggingFaceServerless()` | ✅ PASS | **15 findings**, all warm/traced models, `source=huggingface` |
 | `free-tier-scanner.js` combined | ✅ PASS | **39 findings** (24 + 15); Groq/Together/Google skip gracefully (no keys → warn + `[]`, no crash) |
 | `social-monitor.js` | ✅ PASS | **60 findings** — HF blog RSS (10) + 8 repo releases (40) + Reddit **(10)**, CDATA/tag/Atom parsing intact |
-| **Aggregation total** | ✅ PASS | All 5 entry points return uniform objects; 0 missing critical fields, 0 bad URLs, 0 bad dates |
+| `aifree-rss.js` | ✅ PASS | **20 findings** from `aifree.dev/rss.xml` — free credits/tokens/free tiers, `source=aifree` |
+| `student-pack.js` | ✅ PASS | **40 findings** from GitHub Student Pack "All offers" HTML — AI/cloud/API-relevant offers only, `source=student-pack` |
+| **Aggregation total** | ✅ PASS | All 7 entry points return uniform objects; 0 missing critical fields, 0 bad URLs, 0 bad dates |
 
 Suite: `tests/scrapers.test.mjs` → **ALL PASS** (~10s).
 
@@ -80,6 +82,7 @@ Suite: `tests/kv.test.mjs` → **13 assertions, 0 failed**. Cleanup performed (t
 | `success=true` | ✅ PASS | present |
 | Timestamp / counts | ✅ PASS | ISO timestamp, `totalFindings`+`relevantFindings` numbers |
 | Findings shape | ✅ PASS | every item: title, description, url (http), valid source, valid date, score 0–1, `isNew` boolean |
+| Source boosts | ✅ PASS | `aifree` (+0.15) and `student-pack` (+0.10) added alongside existing sources |
 | Sources in payload | ✅ PASS | `github, openrouter` |
 | **Edge CDN caching** | ✅ PASS | `X-Vercel-Cache: HIT`, identical body on repeat — `s-maxage=300` honoured (Vercel strips `s-maxage` from client-facing header but applies it at edge) |
 

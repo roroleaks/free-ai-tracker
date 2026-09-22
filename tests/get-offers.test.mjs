@@ -34,7 +34,7 @@ if (r) {
       check('finding has title', typeof f.title === 'string' && f.title.length > 0);
       check('finding has description', typeof f.description === 'string');
       check('finding has url (http)', typeof f.url === 'string' && f.url.startsWith('http'));
-      check('finding has valid source', ['github', 'openrouter', 'huggingface', 'vercel-ai-sdk', 'reddit'].includes(f.source), f.source);
+      check('finding has valid source', ['github', 'openrouter', 'huggingface', 'vercel-ai-sdk', 'reddit', 'aifree', 'student-pack'].includes(f.source), f.source);
       check('finding has valid date', !isNaN(Date.parse(f.date)));
       check('finding has score 0..1', typeof f.score === 'number' && f.score >= 0 && f.score <= 1);
       check('finding has isNew boolean', typeof f.isNew === 'boolean');

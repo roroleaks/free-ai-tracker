@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { fetchGitHubReleases } from '../src/scrapers/github-rss.js';
 import { fetchSocialUpdates } from '../src/scrapers/social-monitor.js';
 import { scanFreeTiers } from '../src/scrapers/free-tier-scanner.js';
+import { fetchAifreeOffers } from '../src/scrapers/aifree-rss.js';
+import { fetchStudentPackOffers } from '../src/scrapers/student-pack.js';
 import { filterAndScore } from '../src/services/ai-filter.js';
 import { sendNotification } from '../src/services/email-notifier.js';
 import { logger } from '../src/utils/logger.js';
@@ -12,16 +14,20 @@ export default async function handler(req, res) {
   logger.info('Starting AI offer check...');
 
   try {
-    const [githubReleases, socialUpdates, freeTiers] = await Promise.all([
+    const [githubReleases, socialUpdates, freeTiers, aifreeOffers, studentPack] = await Promise.all([
       fetchGitHubReleases(),
       fetchSocialUpdates(),
       scanFreeTiers(),
+      fetchAifreeOffers(),
+      fetchStudentPackOffers(),
     ]);
 
     const allFindings = [
       ...githubReleases,
       ...socialUpdates,
       ...freeTiers,
+      ...aifreeOffers,
+      ...studentPack,
     ].filter(Boolean);
 
     logger.info(`Collected ${allFindings.length} raw findings`);
