@@ -18,6 +18,7 @@
 | 3 | Database | Upstash Redis `set`/`get` + subscribers set ops | ✅ PASS (13 assertions) |
 | 4 | Offers API | `get-offers.js` (JSON + edge cache) | ✅ PASS (16 assertions, 1 confirmed false negative) |
 | 4 | Subscribe API | `subscribe.js` validation/dup/welcome | ✅ PASS (20 assertions) |
+| 4 | Subscribe API | `subscribe.js` duplicate-submission prevention (idempotency) | ✅ PASS (17 assertions) |
 | 5 | Cron & Email | `check-updates.js` full pipeline + **Brevo delivery** | ✅ PASS (8 assertions) |
 | 6 | Frontend | All UI features in served HTML | ✅ PASS (36 assertions) |
 | — | **Overall** | **Full pipeline** | ✅ **PASS — external emails now delivered to every subscriber** |
@@ -103,6 +104,22 @@ Suite: `tests/get-offers.test.mjs` → **16/17 assertions passed**; the 1 "FAIL"
 
 Suite: `tests/subscribe.test.mjs` → **20/20 passed**. Test emails cleaned from prod.
 
+## 4C. Duplicate-Submission Prevention (`api/subscribe.js` + `public/index.html`)
+
+| Test | Result | Evidence |
+|------|--------|----------|
+| **Rapid double submit (concurrent)** | ✅ PASS | 2 simultaneous identical POSTs → **exactly one** fresh-subscriber response + one "already subscribed" + `200` both |
+| **Fetch-once persistence** | ✅ PASS | normalized email present **exactly once** in `subscribers`; set size +1 only |
+| **KV atomic unique constraint** | ✅ PASS | 8 concurrent `sadd` of same email → exactly one `1`, seven `0` (Upstash `SADD` atomicity = the CE-safe gate) |
+| Case-insensitivity (UPPER) | ✅ PASS | uppercase → "already subscribed", returns lowercased email |
+| Whitespace tolerance (`"  EMAIL  "`) | ✅ PASS | trim+lowercase → duplicate; response email normalized |
+| Duplicate (no double welcome) | ✅ PASS | re-subscribe → "already subscribed", `subscriberCount` unchanged, welcome email fired only for the single fresh add |
+| Method enforcement / JSON shape | ✅ PASS | GET → `405` `success=false`; response shape unchanged (`success`, `message`, `email`, `subscriberCount`) |
+| Frontend in-flight guard | ✅ PASS | `subscribeInFlight` flag blocks concurrent submits; button disabled + `Subscribing…` after client-valid email |
+| Frontend finally-restore (success/network/JSON error) | ✅ PASS | `finally` re-enables button + restores original label; `Network error. Please try again.` retained |
+
+Suite: `tests/subscribe-idempotency.test.mjs` → **17/17 passed** (live API + local KV race). Frontend wiring asserted in `tests/frontend.test.mjs` → **48/48 passed**.
+
 ## 5. Cron & Email Dispatch (`api/check-updates.js` + `email-notifier.js` via **Brevo**)
 
 Live production run of `/api/check-updates` (final validation run):
@@ -145,7 +162,7 @@ Final cron run `2026-09-21 23:38 EET`, subject **"Free AI Tracker - Daily Digest
 | Email validator (frontend) | ✅ PASS | `isValidEmail()` helper present in deployed HTML |
 | Interactive wiring | ✅ PASS | Cache-busting refresh, subscribe form → `/api/subscribe`, 5-min auto-refresh, stats panel |
 
-Suite: `tests/frontend.test.mjs` → **36/36 assertions passed**.
+Suite: `tests/frontend.test.mjs` → **48/48 assertions passed**.
 
 ---
 
