@@ -1,6 +1,6 @@
 {
   "name": "ai-offer-tracker",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Automated scanner for free AI models, time-allowed promos, and platform updates",
   "main": "api/check-updates.js",
   "type": "module",
