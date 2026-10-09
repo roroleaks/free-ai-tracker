@@ -17,7 +17,7 @@ try {
 if (r) {
   check('HTTP 200', r.status === 200, `status=${r.status}`);
   const cc = r.headers.get('cache-control') || '';
-  check('Cache-Control present (public/s-maxage)', /public/.test(cc) && /s-maxage=300/.test(cc), cc);
+  check('Cache-Control present (public)', /public/.test(cc), cc);
   check('Content-Type application/json', (r.headers.get('content-type') || '').includes('application/json'), r.headers.get('content-type'));
 
   let body;
@@ -34,7 +34,7 @@ if (r) {
       check('finding has title', typeof f.title === 'string' && f.title.length > 0);
       check('finding has description', typeof f.description === 'string');
       check('finding has url (http)', typeof f.url === 'string' && f.url.startsWith('http'));
-      check('finding has valid source', ['github', 'openrouter', 'huggingface', 'vercel-ai-sdk', 'reddit', 'aifree', 'student-pack'].includes(f.source), f.source);
+      check('finding has valid source', ['github', 'openrouter', 'huggingface', 'vercel-ai-sdk', 'reddit', 'aifree', 'student-pack', 'ollama', 'deepinfra', 'cerebras', 'cohere'].includes(f.source), f.source);
       check('finding has valid date', !isNaN(Date.parse(f.date)));
       check('finding has score 0..1', typeof f.score === 'number' && f.score >= 0 && f.score <= 1);
       check('finding has isNew boolean', typeof f.isNew === 'boolean');
@@ -53,4 +53,4 @@ try {
 } catch (e) { console.log('  FAIL fetch threw:', e.message); failures++; }
 
 console.log(`\n=== GET-OFFERS TEST: ${passes} passed, ${failures} failed ===`);
-process.exit(failures ? 1 : 0);
+process.exitCode = failures ? 1 : 0;

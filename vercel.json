@@ -5,5 +5,16 @@
       "path": "/api/check-updates",
       "schedule": "0 8 * * 1"
     }
+  ],
+  "headers": [
+    {
+      "source": "/api/get-offers",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=300, stale-while-revalidate=600"
+        }
+      ]
+    }
   ]
 }

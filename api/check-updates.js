@@ -4,6 +4,8 @@ import { fetchSocialUpdates } from '../src/scrapers/social-monitor.js';
 import { scanFreeTiers } from '../src/scrapers/free-tier-scanner.js';
 import { fetchAifreeOffers } from '../src/scrapers/aifree-rss.js';
 import { fetchStudentPackOffers } from '../src/scrapers/student-pack.js';
+import { fetchOllamaModels } from '../src/scrapers/ollama-models.js';
+import { fetchKaggleModels } from '../src/scrapers/kaggle-models.js';
 import { filterAndScore } from '../src/services/ai-filter.js';
 import { sendNotification } from '../src/services/email-notifier.js';
 import { logger } from '../src/utils/logger.js';
@@ -14,12 +16,14 @@ export default async function handler(req, res) {
   logger.info('Starting AI offer check...');
 
   try {
-    const [githubReleases, socialUpdates, freeTiers, aifreeOffers, studentPack] = await Promise.all([
+    const [githubReleases, socialUpdates, freeTiers, aifreeOffers, studentPack, ollamaModels, kaggleModels] = await Promise.all([
       fetchGitHubReleases(),
       fetchSocialUpdates(),
       scanFreeTiers(),
       fetchAifreeOffers(),
       fetchStudentPackOffers(),
+      fetchOllamaModels(),
+      fetchKaggleModels(),
     ]);
 
     const allFindings = [
@@ -28,6 +32,8 @@ export default async function handler(req, res) {
       ...freeTiers,
       ...aifreeOffers,
       ...studentPack,
+      ...ollamaModels,
+      ...kaggleModels,
     ].filter(Boolean);
 
     logger.info(`Collected ${allFindings.length} raw findings`);

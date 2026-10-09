@@ -24,11 +24,14 @@ const SUBREDDITS = [
 ];
 
 function apiHeaders() {
-  return {
+  const headers = {
     'Accept': 'application/vnd.github.v3+json',
     'User-Agent': 'AI-Offer-Tracker/1.0',
-    'Authorization': process.env.GITHUB_TOKEN ? `Bearer ${process.env.GITHUB_TOKEN}` : '',
   };
+  if (process.env.GITHUB_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  }
+  return headers;
 }
 
 async function fetchReleases(repo) {

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Free AI Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
@@ -13,15 +13,15 @@
           fontFamily: { sans: ['Inter', 'sans-serif'] },
           colors: {
             primary: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1' },
-            dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155' },
+            dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155', 600: '#475569', 500: '#64748b', 400: '#94a3b8' },
           },
         },
       },
     };
   </script>
   <style>
-    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 16px 30px -8px rgba(0,0,0,0.35); }
     .skeleton { background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     .tagline {
@@ -41,15 +41,23 @@
       text-transform: uppercase;
       line-height: 1;
     }
+    .modality-btn.active {
+      background-color: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .touch-tap { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   </style>
 </head>
-<body class="bg-dark-900 text-white min-h-screen flex flex-col">
+<body class="bg-dark-900 text-white min-h-screen flex flex-col antialiased">
   <header class="border-b border-dark-700 bg-dark-800/80 backdrop-blur-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex items-center justify-between h-16 sm:h-20">
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20 flex-shrink-0">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
           </div>
@@ -60,10 +68,11 @@
             </span>
           </h1>
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2.5 sm:gap-4">
           <span id="lastUpdated" class="text-sm text-dark-400 hidden sm:block">Loading...</span>
           <img id="profilePhoto" src="/profile.jpg" alt="Dr Raouf Roshdy" class="w-10 h-10 rounded-full object-cover border-2 border-primary-500/50 hidden md:block" onerror="this.style.display='none'">
-          <button id="refreshBtn" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <button id="refreshBtn" class="touch-tap px-3 py-1.5 sm:px-4 sm:py-2 bg-primary-600 hover:bg-primary-700 active:scale-95 text-white text-xs sm:text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Refresh
           </button>
         </div>
@@ -71,105 +80,190 @@
     </div>
   </header>
 
-  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-    <div class="mb-8">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-dark-800 rounded-xl p-6 border border-dark-700">
-          <p class="text-dark-400 text-sm font-medium">Total Scanned</p>
-          <p id="statTotal" class="text-3xl font-bold text-white mt-1">—</p>
+  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 w-full">
+    <!-- Stat Counter Cards -->
+    <div class="mb-6 sm:mb-8">
+      <div class="grid grid-cols-3 gap-2 sm:gap-4">
+        <div class="bg-dark-800 rounded-xl p-3 sm:p-6 border border-dark-700/80 shadow-sm text-center sm:text-left">
+          <p class="text-dark-400 text-[11px] sm:text-sm font-medium flex items-center justify-center sm:justify-start gap-1 sm:gap-2">
+            <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-400 flex-shrink-0"></span>
+            <span class="truncate">Total Scanned</span>
+          </p>
+          <p id="statTotal" class="text-lg sm:text-3xl font-bold text-white mt-1 sm:mt-1.5 truncate">—</p>
         </div>
-        <div class="bg-dark-800 rounded-xl p-6 border border-dark-700">
-          <p class="text-dark-400 text-sm font-medium">Relevant Offers</p>
-          <p id="statRelevant" class="text-3xl font-bold text-primary-500 mt-1">—</p>
+        <div class="bg-dark-800 rounded-xl p-3 sm:p-6 border border-dark-700/80 shadow-sm text-center sm:text-left">
+          <p class="text-dark-400 text-[11px] sm:text-sm font-medium flex items-center justify-center sm:justify-start gap-1 sm:gap-2">
+            <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-primary-500 flex-shrink-0"></span>
+            <span class="truncate">Relevant Offers</span>
+          </p>
+          <p id="statRelevant" class="text-lg sm:text-3xl font-bold text-primary-500 mt-1 sm:mt-1.5 truncate">—</p>
         </div>
-        <div class="bg-dark-800 rounded-xl p-6 border border-dark-700">
-          <p class="text-dark-400 text-sm font-medium">Last Updated</p>
-          <p id="statTimestamp" class="text-3xl font-bold text-white mt-1">—</p>
+        <div class="bg-dark-800 rounded-xl p-3 sm:p-6 border border-dark-700/80 shadow-sm text-center sm:text-left">
+          <p class="text-dark-400 text-[11px] sm:text-sm font-medium flex items-center justify-center sm:justify-start gap-1 sm:gap-2">
+            <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+            <span class="truncate">Last Updated</span>
+          </p>
+          <p id="statTimestamp" class="text-[11px] sm:text-3xl font-bold text-white mt-1 sm:mt-1.5 truncate leading-tight">—</p>
         </div>
       </div>
     </div>
 
-    <div class="mb-8 bg-gradient-to-br from-primary-600 to-primary-800 rounded-xl p-6 border border-primary-500/30">
+    <!-- Newsletter / Subscribe Banner -->
+    <div class="mb-6 sm:mb-8 bg-gradient-to-br from-primary-600 to-primary-800 rounded-xl p-5 sm:p-7 border border-primary-500/30 shadow-lg">
       <div class="flex flex-col md:flex-row md:items-center gap-4">
         <div class="flex-1">
-          <h2 class="text-xl font-bold text-white">Never miss a free AI model 🚀</h2>
-          <p class="text-primary-100 text-sm mt-1">Sign up for weekly AI alerts — free models, open weights, and platform updates straight to your inbox.</p>
-          <p id="subscribeStatus" class="text-primary-100 text-sm mt-2 hidden"></p>
+          <h2 class="text-lg sm:text-2xl font-bold text-white">Never miss a free AI model 🚀</h2>
+          <p class="text-primary-100 text-xs sm:text-sm mt-1 leading-relaxed">Sign up for weekly AI alerts — free models, open weights, and platform updates straight to your inbox.</p>
+          <p id="subscribeStatus" class="text-primary-100 text-sm mt-2 hidden font-medium"></p>
         </div>
-        <form id="subscribeForm" class="flex flex-col sm:flex-row gap-3 md:w-1/2" novalidate>
+        <form id="subscribeForm" class="flex flex-col sm:flex-row gap-2.5 sm:gap-3 md:w-1/2" novalidate>
           <input
             id="subscribeEmail"
             type="email"
             required
             placeholder="you@example.com"
-            class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-primary-100 focus:outline-none focus:ring-2 focus:ring-white/50"
+            class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-primary-100 focus:outline-none focus:ring-2 focus:ring-white/50 text-base sm:text-sm"
           />
           <button
             id="subscribeBtn"
             type="submit"
-            class="px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors whitespace-nowrap"
+            class="touch-tap px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 active:scale-[0.98] transition-all whitespace-nowrap text-sm shadow-sm text-center"
           >
             Subscribe for Free AI Alerts
           </button>
         </form>
       </div>
       <div class="mt-4 pt-4 border-t border-white/10">
-        <p class="text-primary-100 text-sm">Already subscribed? <a href="#" id="manageLink" class="text-white underline font-medium">Manage or unsubscribe</a> — we'll email you a one-time link.</p>
-        <form id="manageForm" class="hidden flex-col sm:flex-row gap-3 mt-2 md:w-1/2" novalidate>
+        <p class="text-primary-100 text-xs sm:text-sm">Already subscribed? <a href="#" id="manageLink" class="text-white underline font-medium hover:text-white/80">Manage or unsubscribe</a> — we'll email you a one-time link.</p>
+        <form id="manageForm" class="hidden flex-col sm:flex-row gap-2.5 sm:gap-3 mt-3 md:w-1/2" novalidate>
           <input
             id="manageEmail"
             type="email"
             required
             placeholder="you@example.com"
-            class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-primary-100 focus:outline-none focus:ring-2 focus:ring-white/50"
+            class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-primary-100 focus:outline-none focus:ring-2 focus:ring-white/50 text-base sm:text-sm"
           />
           <button
             id="manageBtn"
             type="submit"
-            class="px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors whitespace-nowrap"
+            class="touch-tap px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 active:scale-[0.98] transition-all whitespace-nowrap text-sm text-center"
           >
             Send Manage Link
           </button>
         </form>
-        <p id="manageStatus" class="text-primary-100 text-sm mt-2 hidden"></p>
+        <p id="manageStatus" class="text-primary-100 text-sm mt-2 hidden font-medium"></p>
       </div>
     </div>
 
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-bold">Latest AI Offers</h2>
-      <div class="flex gap-2 flex-wrap">
-        <button id="filterAll" class="filter-btn active flex items-center gap-1.5 px-3 py-1 text-sm rounded-lg bg-primary-600 text-white">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-          All
-        </button>
-        <button id="filterFree" class="filter-btn flex items-center gap-1.5 px-3 py-1 text-sm rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
-          Free Models
-        </button>
-        <button id="filterGithub" class="filter-btn flex items-center gap-1.5 px-3 py-1 text-sm rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-          GitHub Releases
-        </button>
-        <button id="filterPlatform" class="filter-btn flex items-center gap-1.5 px-3 py-1 text-sm rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
-          Platform Updates
-        </button>
-        <button id="filterNew" class="filter-btn flex items-center gap-1.5 px-3 py-1 text-sm rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-          New Models
-        </button>
+    <!-- Enhanced Search, Filter & Modality Controls -->
+    <div class="bg-dark-800/90 rounded-2xl p-4 sm:p-5 border border-dark-700/80 mb-6 sm:mb-7 shadow-sm">
+      <!-- Search Input & Quick Controls -->
+      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-between mb-3.5 sm:mb-4">
+        <!-- Live Search Input -->
+        <div class="relative flex-1">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-dark-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Search free models, weights, providers, or tools... (Press '/' to search)"
+            class="w-full pl-10 pr-20 sm:pr-24 py-2.5 bg-dark-900 border border-dark-700 rounded-xl text-white placeholder-dark-400 text-base sm:text-sm focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+          />
+          <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-1.5">
+            <button id="clearSearchBtn" class="hidden text-dark-400 hover:text-white p-1 rounded-md text-xs touch-tap" title="Clear search">✕</button>
+            <span class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono uppercase bg-dark-800 text-dark-400 rounded border border-dark-700">/</span>
+          </div>
+        </div>
+
+        <!-- Sort Control -->
+        <div class="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto">
+          <div class="flex items-center gap-2">
+            <label for="sortSelect" class="text-xs text-dark-400 font-medium whitespace-nowrap">Sort:</label>
+            <select
+              id="sortSelect"
+              class="bg-dark-900 border border-dark-700 rounded-xl px-2.5 sm:px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 cursor-pointer"
+            >
+              <option value="score">Highest Relevance</option>
+              <option value="newest">Newest First</option>
+              <option value="title">Alphabetical (A-Z)</option>
+            </select>
+          </div>
+          <span id="resultsCount" class="text-xs font-semibold px-2.5 py-1.5 bg-dark-900 text-primary-400 rounded-lg border border-dark-700 whitespace-nowrap">
+            0 offers
+          </span>
+        </div>
+      </div>
+
+      <!-- Modality Tags Filter Bar (Touch horizontal scroll on mobile) -->
+      <div class="pt-3 border-t border-dark-700/60 mb-3">
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
+          <span class="text-xs text-dark-400 font-medium mr-1 flex items-center gap-1 flex-shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+            Modality:
+          </span>
+          <button data-modality="all" class="touch-tap modality-btn active px-3 py-1.5 text-xs font-medium rounded-lg border border-dark-700 bg-dark-900 text-dark-300 hover:text-white transition-colors flex-shrink-0 whitespace-nowrap">
+            All Types
+          </button>
+          <button data-modality="llm" class="touch-tap modality-btn px-3 py-1.5 text-xs font-medium rounded-lg border border-dark-700 bg-dark-900 text-dark-300 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
+            <span>🧠</span> LLM / Text
+          </button>
+          <button data-modality="image" class="touch-tap modality-btn px-3 py-1.5 text-xs font-medium rounded-lg border border-dark-700 bg-dark-900 text-dark-300 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
+            <span>🎨</span> Image / Vision
+          </button>
+          <button data-modality="audio" class="touch-tap modality-btn px-3 py-1.5 text-xs font-medium rounded-lg border border-dark-700 bg-dark-900 text-dark-300 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
+            <span>🎵</span> Audio / Voice
+          </button>
+          <button data-modality="code" class="touch-tap modality-btn px-3 py-1.5 text-xs font-medium rounded-lg border border-dark-700 bg-dark-900 text-dark-300 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
+            <span>💻</span> Code / Tools
+          </button>
+        </div>
+      </div>
+
+      <!-- Source Category Filter Buttons (Touch horizontal scroll on mobile) -->
+      <div class="pt-2 border-t border-dark-700/40 sm:border-0 sm:pt-0">
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
+          <span class="text-xs text-dark-400 font-medium mr-1 flex-shrink-0">Source:</span>
+          <button id="filterAll" class="touch-tap filter-btn active flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white flex-shrink-0 whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+            All
+          </button>
+          <button id="filterFree" class="touch-tap filter-btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600 flex-shrink-0 whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+            Free Models
+          </button>
+          <button id="filterGithub" class="touch-tap filter-btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600 flex-shrink-0 whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            GitHub Releases
+          </button>
+          <button id="filterPlatform" class="touch-tap filter-btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600 flex-shrink-0 whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+            Platform Updates
+          </button>
+          <button id="filterNew" class="touch-tap filter-btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-dark-700 text-dark-300 hover:bg-dark-600 flex-shrink-0 whitespace-nowrap">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+            New Models
+          </button>
+        </div>
       </div>
     </div>
 
+    <!-- Offers Grid -->
     <div id="offersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     </div>
 
-    <div id="emptyState" class="hidden text-center py-16">
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden text-center py-16 bg-dark-800/50 rounded-2xl border border-dark-700/60 p-8">
       <svg class="w-16 h-16 mx-auto text-dark-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
-      <p id="emptyTitle" class="text-dark-400 text-lg">No offers found</p>
-      <p id="emptyHint" class="text-dark-500 mt-1">Run the cron job or check back later</p>
+      <p id="emptyTitle" class="text-dark-300 text-lg font-semibold">No offers found</p>
+      <p id="emptyHint" class="text-dark-500 mt-1 text-sm">Run the cron job or check back later</p>
+      <button id="resetFiltersBtn" class="mt-4 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white text-xs font-medium rounded-lg transition-colors inline-flex items-center gap-1.5">
+        Reset filters &amp; search
+      </button>
     </div>
   </main>
 
@@ -185,6 +279,9 @@
   <script>
     let allOffers = [];
     let currentFilter = 'all';
+    let currentModality = 'all';
+    let searchQuery = '';
+    let sortOrder = 'score';
 
     const API_URL = '/api/get-offers';
 
@@ -213,20 +310,91 @@
       document.getElementById('lastUpdated').textContent = `Updated ${formatRelativeTime(data.timestamp)}`;
     }
 
+    // Modality detection tags
+    function detectModalities(offer) {
+      const text = `${offer.title} ${offer.description || ''} ${offer.url || ''}`.toLowerCase();
+      const mods = [];
+
+      // Vision / Image
+      if (/image|vision|flux|diffusion|\bsd\b|stable diffusion|comfyui|art|dall-e|visual|multimodal|image-to-text|image-text/.test(text)) {
+        mods.push({ id: 'image', label: 'Image/Vision', icon: '🎨', color: 'bg-pink-500/15 text-pink-300 border-pink-500/30' });
+      }
+
+      // Audio / Voice
+      if (/audio|voice|tts|speech|whisper|music|sound|transcription/.test(text)) {
+        mods.push({ id: 'audio', label: 'Audio/Voice', icon: '🎵', color: 'bg-amber-500/15 text-amber-300 border-amber-500/30' });
+      }
+
+      // Code / Dev Tools
+      if (/code|coder|coding|copilot|\bdev\b|sdk|developer|python|git|agent|framework|toolkit|vllm|ollama|student-pack/.test(text)) {
+        mods.push({ id: 'code', label: 'Code/Dev', icon: '💻', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' });
+      }
+
+      // Text / LLM (default or explicit)
+      if (/llm|gpt|chat|text|reasoning|claude|gemini|llama|language model|mistral|deepseek|qwen|prompt|completion|openrouter|groq|together/.test(text) || mods.length === 0) {
+        mods.push({ id: 'llm', label: 'LLM/Text', icon: '🧠', color: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' });
+      }
+
+      return mods;
+    }
+
     function renderOffers() {
       const grid = document.getElementById('offersGrid');
       const emptyState = document.getElementById('emptyState');
+      const resultsCount = document.getElementById('resultsCount');
 
+      // 1. Source filter
       let filtered = allOffers;
       if (currentFilter === 'free') filtered = allOffers.filter(o => o.source === 'openrouter');
       else if (currentFilter === 'github') filtered = allOffers.filter(o => o.source === 'github');
-      else if (currentFilter === 'platform') filtered = allOffers.filter(o => ['huggingface', 'vercel-ai-sdk', 'aifree', 'student-pack'].includes(o.source));
+      else if (currentFilter === 'platform') filtered = allOffers.filter(o => ['huggingface', 'vercel-ai-sdk', 'aifree', 'student-pack', 'ollama', 'deepinfra', 'cerebras', 'cohere'].includes(o.source));
       else if (currentFilter === 'new') filtered = allOffers.filter(o => isNewOffer(o));
+
+      // 2. Modality filter
+      if (currentModality !== 'all') {
+        filtered = filtered.filter(o => {
+          const mods = detectModalities(o);
+          return mods.some(m => m.id === currentModality);
+        });
+      }
+
+      // 3. Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        filtered = filtered.filter(o => {
+          const text = `${o.title} ${o.description || ''} ${o.source} ${o.url}`.toLowerCase();
+          const mods = detectModalities(o).map(m => m.label.toLowerCase()).join(' ');
+          return text.includes(q) || mods.includes(q);
+        });
+      }
+
+      // 4. Sorting
+      filtered.sort((a, b) => {
+        if (sortOrder === 'newest') {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        }
+        if (sortOrder === 'title') {
+          return (a.title || '').localeCompare(b.title || '');
+        }
+        return (b.score || 0) - (a.score || 0); // score desc
+      });
+
+      if (resultsCount) {
+        resultsCount.textContent = `${filtered.length} offer${filtered.length === 1 ? '' : 's'}`;
+      }
 
       if (filtered.length === 0) {
         grid.innerHTML = '';
-        document.getElementById('emptyTitle').textContent = currentFilter === 'new' ? 'No New Models' : 'No offers found';
-        document.getElementById('emptyHint').textContent = currentFilter === 'new' ? 'New models within 7 days will appear here' : 'Run the cron job or check back later';
+        if (currentFilter === 'new') {
+          document.getElementById('emptyTitle').textContent = currentFilter === 'new' ? 'No New Models' : 'No offers found';
+          document.getElementById('emptyHint').textContent = 'New models within 7 days will appear here';
+        } else if (searchQuery) {
+          document.getElementById('emptyTitle').textContent = 'No matching offers found';
+          document.getElementById('emptyHint').textContent = `No results found for "${escapeHtml(searchQuery)}"`;
+        } else {
+          document.getElementById('emptyTitle').textContent = 'No offers found';
+          document.getElementById('emptyHint').textContent = 'Run the cron job or check back later';
+        }
         emptyState.classList.remove('hidden');
         return;
       }
@@ -252,43 +420,95 @@
       return { bar: 'bg-slate-500', text: 'text-slate-400' };
     }
 
+    function getDomain(url) {
+      try {
+        return new URL(url).hostname.replace(/^www\./, '');
+      } catch {
+        return '';
+      }
+    }
+
     function createCard(offer) {
       const sourceColors = {
         github: 'bg-purple-500/20 text-purple-400',
         huggingface: 'bg-yellow-500/20 text-yellow-400',
         'vercel-ai-sdk': 'bg-gray-500/20 text-gray-400',
         openrouter: 'bg-blue-500/20 text-blue-400',
+        aifree: 'bg-emerald-500/20 text-emerald-400',
+        'student-pack': 'bg-sky-500/20 text-sky-400',
+        ollama: 'bg-emerald-500/20 text-emerald-300',
+        deepinfra: 'bg-indigo-500/20 text-indigo-300',
+        cerebras: 'bg-orange-500/20 text-orange-400',
+        cohere: 'bg-teal-500/20 text-teal-300',
+        groq: 'bg-red-500/20 text-red-400',
+        together: 'bg-slate-500/20 text-slate-300',
+        google: 'bg-blue-600/20 text-blue-300',
       };
       const sourceLabel = offer.source.charAt(0).toUpperCase() + offer.source.slice(1);
       const score = Math.round((offer.score || 0) * 100);
       const scoreStyle = getScoreStyle(score);
       const isNew = isNewOffer(offer);
+      const modalities = detectModalities(offer);
+      const domain = getDomain(offer.url);
+
+      const modBadges = modalities.map(m => `
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded-full border ${m.color}">
+          <span>${m.icon}</span> ${m.label}
+        </span>
+      `).join('');
 
       return `
-        <article class="card-hover bg-dark-800 rounded-xl p-6 border border-dark-700 h-full flex flex-col">
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-1 text-xs font-medium rounded-full ${sourceColors[offer.source] || 'bg-dark-600 text-dark-300'}">
-                ${sourceLabel}
-              </span>
-              ${isNew ? '<span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-full bg-red-500/20 text-red-400"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>NEW</span>' : ''}
+        <article class="card-hover bg-dark-800 rounded-xl p-4 sm:p-6 border border-dark-700/80 hover:border-dark-600 h-full flex flex-col justify-between group">
+          <div>
+            <!-- Header Badges -->
+            <div class="flex items-start justify-between gap-2 mb-2 sm:mb-3">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold rounded-full ${sourceColors[offer.source] || 'bg-dark-600 text-dark-300'}">
+                  ${sourceLabel}
+                </span>
+                ${isNew ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold rounded-full bg-red-500/20 text-red-400"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>NEW</span>' : ''}
+              </div>
+              <span class="text-[11px] sm:text-xs text-dark-400 font-mono whitespace-nowrap">${formatDate(offer.date)}</span>
             </div>
-            <span class="text-xs text-dark-500">${formatDate(offer.date)}</span>
+
+            <!-- Modality Tags -->
+            <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap mb-2 sm:mb-2.5">
+              ${modBadges}
+            </div>
+
+            <!-- Title & Domain -->
+            <h3 class="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-1.5 line-clamp-2 group-hover:text-primary-400 transition-colors leading-snug">
+              ${escapeHtml(offer.title)}
+            </h3>
+            ${domain ? `<p class="text-[11px] sm:text-xs text-dark-400 mb-2.5 sm:mb-3 font-medium flex items-center gap-1 truncate">🌐 ${escapeHtml(domain)}</p>` : ''}
+
+            <!-- Description -->
+            <p class="text-dark-400 text-xs sm:text-sm mb-3.5 sm:mb-4 line-clamp-3 leading-relaxed">${escapeHtml(offer.description || 'No description available')}</p>
           </div>
-          <h3 class="text-lg font-semibold text-white mb-2 line-clamp-2">${escapeHtml(offer.title)}</h3>
-          <p class="text-dark-400 text-sm mb-4 flex-1 line-clamp-3">${escapeHtml(offer.description || 'No description available')}</p>
-          <div class="flex items-center justify-between pt-4 border-t border-dark-700">
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-dark-500">Score:</span>
-              <div class="w-24 h-2 bg-dark-700 rounded-full overflow-hidden">
+
+          <!-- Footer Action Bar -->
+          <div class="pt-3.5 sm:pt-4 border-t border-dark-700/80 flex items-center justify-between gap-1.5">
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <span class="text-[11px] sm:text-xs text-dark-400">Score:</span>
+              <div class="w-14 sm:w-20 h-2 bg-dark-700 rounded-full overflow-hidden">
                 <div class="h-full ${scoreStyle.bar}" style="width: ${score}%"></div>
               </div>
-              <span class="text-xs font-semibold ${scoreStyle.text}">${score}%</span>
+              <span class="text-[11px] sm:text-xs font-semibold ${scoreStyle.text}">${score}%</span>
             </div>
-            <a href="${escapeHtml(offer.url)}" target="_blank" rel="noopener noreferrer"
-               class="text-sm font-medium text-primary-500 hover:text-primary-400 transition-colors flex items-center gap-1">
-              View Offer →
-            </a>
+
+            <div class="flex items-center gap-1 sm:gap-2">
+              <button
+                onclick="copyOfferLink(event, '${escapeHtml(offer.url)}')"
+                class="touch-tap p-1.5 sm:p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-700 transition-colors flex items-center justify-center min-w-[32px] min-h-[32px]"
+                title="Copy offer URL"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              </button>
+              <a href="${escapeHtml(offer.url)}" target="_blank" rel="noopener noreferrer"
+                 class="touch-tap text-xs sm:text-sm font-semibold text-primary-400 hover:text-primary-300 py-1 px-2 rounded-md hover:bg-primary-500/10 transition-colors flex items-center gap-1 whitespace-nowrap">
+                View Offer →
+              </a>
+            </div>
           </div>
         </article>
       `;
@@ -329,6 +549,19 @@
       `;
     }
 
+    // Copy offer link helper
+    function copyOfferLink(event, url) {
+      event.preventDefault();
+      event.stopPropagation();
+      const btn = event.currentTarget;
+      navigator.clipboard.writeText(url).then(() => {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="text-xs text-emerald-400 font-bold">✓</span>';
+        setTimeout(() => { btn.innerHTML = originalHtml; }, 1500);
+      }).catch(() => {});
+    }
+
+    // Source Filter Buttons wiring
     document.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active', 'bg-primary-600', 'text-white'));
@@ -339,6 +572,87 @@
         renderOffers();
       });
     });
+
+    // Modality Filter Buttons wiring
+    document.querySelectorAll('.modality-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.modality-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentModality = btn.dataset.modality || 'all';
+        renderOffers();
+      });
+    });
+
+    // Search bar input wiring
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        if (clearSearchBtn) {
+          clearSearchBtn.classList.toggle('hidden', !searchQuery);
+        }
+        renderOffers();
+      });
+
+      if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', () => {
+          searchInput.value = '';
+          searchQuery = '';
+          clearSearchBtn.classList.add('hidden');
+          renderOffers();
+          searchInput.focus();
+        });
+      }
+
+      // Keyboard shortcut '/' to search
+      window.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement !== searchInput && document.activeElement.tagName !== 'INPUT') {
+          e.preventDefault();
+          searchInput.focus();
+        } else if (e.key === 'Escape' && document.activeElement === searchInput) {
+          searchInput.value = '';
+          searchQuery = '';
+          if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+          searchInput.blur();
+          renderOffers();
+        }
+      });
+    }
+
+    // Sort order wiring
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', (e) => {
+        sortOrder = e.target.value;
+        renderOffers();
+      });
+    }
+
+    // Reset filters button wiring
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    if (resetFiltersBtn) {
+      resetFiltersBtn.addEventListener('click', () => {
+        searchQuery = '';
+        if (searchInput) searchInput.value = '';
+        if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+
+        currentModality = 'all';
+        document.querySelectorAll('.modality-btn').forEach(b => b.classList.toggle('active', b.dataset.modality === 'all'));
+
+        currentFilter = 'all';
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.toggle('active', b.id === 'filterAll');
+          b.classList.toggle('bg-primary-600', b.id === 'filterAll');
+          b.classList.toggle('text-white', b.id === 'filterAll');
+          b.classList.toggle('bg-dark-700', b.id !== 'filterAll');
+          b.classList.toggle('text-dark-300', b.id !== 'filterAll');
+        });
+
+        renderOffers();
+      });
+    }
 
     document.getElementById('refreshBtn').addEventListener('click', async (event) => {
       const btn = event.currentTarget;
@@ -464,6 +778,7 @@
         });
         const data = await res.json();
         if (data.success) {
+          manageEmail.value = '';
           setManageStatus(data.message || 'Manage link sent.');
         } else {
           setManageStatus(data.error || 'Request failed. Please try again.', true);
@@ -475,6 +790,28 @@
         manageBtn.textContent = 'Send Manage Link';
       }
     });
+
+    const backToTopBtn = document.getElementById('backToTopBtn');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        backToTopBtn.classList.remove('hidden');
+      } else {
+        backToTopBtn.classList.add('hidden');
+      }
+    }, { passive: true });
+    backToTopBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   </script>
+
+  <!-- Mobile Floating Back to Top Button -->
+  <button
+    id="backToTopBtn"
+    class="touch-tap fixed bottom-5 right-5 z-40 hidden p-3 rounded-full bg-primary-600/90 hover:bg-primary-600 text-white shadow-xl shadow-primary-500/20 backdrop-blur-sm border border-primary-400/30 transition-all hover:scale-110 active:scale-95"
+    title="Back to top"
+    aria-label="Back to top"
+  >
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+  </button>
 </body>
 </html>

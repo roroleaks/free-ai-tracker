@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 
 const OPENROUTER_API = 'https://openrouter.ai/api/v1/models';
 const HF_SERVERLESS_API = 'https://huggingface.co/api/models?inference=warm&sort=trendingScore&direction=-1&limit=25';
+const DEEPINFRA_API = 'https://api.deepinfra.com/models/list';
 
 function parsePrice(value) {
   if (value === null || value === undefined) return NaN;
@@ -56,6 +57,31 @@ export function scanHuggingFaceServerless() {
     });
 }
 
+export function scanDeepInfra() {
+  return fetch(DEEPINFRA_API, { headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' } })
+    .then((response) => {
+      if (!response.ok) throw new Error(`DeepInfra API failed with status ${response.status}`);
+      return response.json();
+    })
+    .then((models) => {
+      if (!Array.isArray(models)) return [];
+      return models
+        .filter((m) => !m.deprecated && ['text-generation', 'text-to-image'].includes(m.type))
+        .slice(0, 15)
+        .map((model) => ({
+          title: `DeepInfra: ${model.model_name}`,
+          description: `${model.description || 'Fast serverless model deployment'} ($1.80 free developer credits on signup)`,
+          url: `https://deepinfra.com/${model.model_name}`,
+          source: 'deepinfra',
+          date: model.create_ts || new Date().toISOString(),
+        }));
+    })
+    .catch((error) => {
+      console.warn('[free-tier-scanner] DeepInfra scan error:', error.message);
+      return [];
+    });
+}
+
 export function scanGroq() {
   const key = process.env.GROQ_API_KEY;
   if (!key) {
@@ -78,6 +104,32 @@ export function scanGroq() {
     })));
 }
 
+export function scanCerebras() {
+  const key = process.env.CEREBRAS_API_KEY;
+  if (!key) {
+    console.warn('[free-tier-scanner] CEREBRAS_API_KEY not set — skipping Cerebras');
+    return Promise.resolve([]);
+  }
+  return fetch('https://api.cerebras.ai/v1/models', {
+    headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'AI-Offer-Tracker/1.0' },
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Cerebras API failed with status ${response.status}`);
+      return response.json();
+    })
+    .then((data) => (data.data || []).map((model) => ({
+      title: `Cerebras: ${model.id}`,
+      description: 'Ultra-fast inference on Cerebras Free Tier (1M tokens/day allowance)',
+      url: 'https://inference.cerebras.ai/',
+      source: 'cerebras',
+      date: new Date().toISOString(),
+    })))
+    .catch((error) => {
+      console.warn('[free-tier-scanner] Cerebras scan error:', error.message);
+      return [];
+    });
+}
+
 export function scanTogether() {
   const key = process.env.TOGETHER_API_KEY;
   if (!key) {
@@ -98,6 +150,32 @@ export function scanTogether() {
       source: 'together',
       date: new Date().toISOString(),
     })));
+}
+
+export function scanCohere() {
+  const key = process.env.COHERE_API_KEY;
+  if (!key) {
+    console.warn('[free-tier-scanner] COHERE_API_KEY not set — skipping Cohere');
+    return Promise.resolve([]);
+  }
+  return fetch('https://api.cohere.com/v1/models', {
+    headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'AI-Offer-Tracker/1.0' },
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Cohere API failed with status ${response.status}`);
+      return response.json();
+    })
+    .then((data) => (data.models || []).map((model) => ({
+      title: `Cohere: ${model.name}`,
+      description: `Available on Cohere Free Trial API tier${model.endpoints ? ` (${model.endpoints.join(', ')})` : ''}`,
+      url: 'https://cohere.com/pricing',
+      source: 'cohere',
+      date: new Date().toISOString(),
+    })))
+    .catch((error) => {
+      console.warn('[free-tier-scanner] Cohere scan error:', error.message);
+      return [];
+    });
 }
 
 export function scanGoogleAIStudio() {
@@ -128,8 +206,11 @@ export async function scanFreeTiers() {
   const sources = [
     scanOpenRouter().catch((error) => { console.error(error.message); return []; }),
     scanHuggingFaceServerless().catch((error) => { console.error(error.message); return []; }),
+    scanDeepInfra(),
     scanGroq(),
+    scanCerebras(),
     scanTogether(),
+    scanCohere(),
     scanGoogleAIStudio(),
   ];
 

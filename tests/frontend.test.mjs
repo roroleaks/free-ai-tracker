@@ -87,4 +87,4 @@ check('manage button label', html.includes('Send Manage Link'));
 check('manage shows no other-subscriber data', !/other@|list of|all subscribers/i.test(html));
 
 console.log(`\n=== FRONTEND TEST: ${passes} passed, ${failures} failed ===`);
-process.exit(failures ? 1 : 0);
+process.exitCode = failures ? 1 : 0;

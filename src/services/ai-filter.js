@@ -27,6 +27,11 @@ const SOURCE_BOOST = {
   groq: 0.1,
   together: 0.1,
   google: 0.1,
+  ollama: 0.12,
+  deepinfra: 0.1,
+  cerebras: 0.1,
+  cohere: 0.1,
+  kaggle: 0.1,
 };
 
 const NEW_MODEL_DAYS = 7;

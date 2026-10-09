@@ -53,11 +53,9 @@ export const kv = {
     if (redis) {
       return await redis.srem(key, value);
     }
-    if (memorySets.has(key)) {
-      memorySets.get(key).delete(value);
-    }
+    const removed = memorySets.has(key) ? (memorySets.get(key).delete(value) ? 1 : 0) : 0;
     memoryWarning(key);
-    return 1;
+    return removed;
   },
   async sismember(key, value) {
     if (redis) {
