@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vercel dev",
     "test": "node tests/email-html.test.mjs && node tests/ai-filter.test.mjs && node tests/email-regex.test.mjs && node tests/unsubscribe-token.test.mjs && node tests/frontend.test.mjs",
-    "test:scrapers": "node tests/scrapers.test.mjs"
+    "test:scrapers": "node tests/scrapers.test.mjs",
+    "snapshot": "node scripts/create-snapshot.js"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
