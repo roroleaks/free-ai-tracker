@@ -1,0 +1,24 @@
+{
+  "name": "Free AI Tracker",
+  "short_name": "AI Tracker",
+  "description": "Weekly curated tracker for free AI models, open weights, and platform updates.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.jpg",
+      "sizes": "192x192 512x512 1024x1024",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
