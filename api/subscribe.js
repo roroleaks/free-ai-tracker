@@ -37,6 +37,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  const forwarded = req.headers?.['x-forwarded-for'] || '';
+  const ip = (typeof forwarded === 'string' && forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || 'unknown'));
+  const day = new Date().toISOString().slice(0, 10);
+  const rateKey = `ratelimit:${ip}:${day}`;
+  const hits = await kv.incr(rateKey);
+  if (hits > 20) {
+    logger.warn('subscribe rate limited', { requestId, event: 'rate_limited', ip });
+    return res.status(429).json({ success: false, error: 'Too many requests. Try again later.' });
+  }
+
   let email = '';
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});

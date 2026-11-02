@@ -6,8 +6,9 @@ import { scanFreeTiers, scanOpenRouter, scanHuggingFaceServerless, scanDeepInfra
 import { fetchAifreeOffers } from '../src/scrapers/aifree-rss.js';
 import { fetchStudentPackOffers } from '../src/scrapers/student-pack.js';
 import { fetchOllamaModels } from '../src/scrapers/ollama-models.js';
+import { fetchKaggleModels } from '../src/scrapers/kaggle-models.js';
 
-const REQUIRED_FIELDS = ['title', 'description', 'url', 'source', 'date'];
+const REQUIRED_FIELDS = ['title', 'description', 'url', 'source'];
 
 function validateFindings(name, findings) {
   let pass = true;
@@ -20,7 +21,8 @@ function validateFindings(name, findings) {
       }
     }
     if (!(f.url || '').startsWith('http')) { pass = false; console.log('  BAD URL:', f.url); }
-    if (isNaN(Date.parse(f.date))) { pass = false; console.log('  BAD DATE:', f.date); }
+    if (f.date && isNaN(Date.parse(f.date))) { pass = false; console.log('  BAD DATE:', f.date); }
+    if (!f.date && f.isNew !== false) { pass = false; console.log('  UNDATED MUST HAVE isNew=false:', f.title); }
   }
   console.log(`[${name}] ${findings.length} findings | fields complete: ${pass ? 'PASS' : 'FAIL'}${Object.keys(missing).length ? ' missing=' + JSON.stringify(missing) : ''}`);
   return pass;
@@ -73,5 +75,12 @@ try {
   const pack = await fetchStudentPackOffers();
   allPass = validateFindings('student-pack', pack) && allPass;
 } catch (e) { allPass = false; console.log('[student-pack] THREW:', e.message); }
+
+try {
+  const kaggle = await fetchKaggleModels();
+  if (kaggle && kaggle.length > 0) {
+    allPass = validateFindings('kaggle-models', kaggle) && allPass;
+  }
+} catch (e) { allPass = false; console.log('[kaggle-models] THREW:', e.message); }
 
 process.exitCode = allPass ? 0 : 1;

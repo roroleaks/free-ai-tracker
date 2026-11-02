@@ -1,6 +1,10 @@
 import { kv } from '../src/utils/kv.js';
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
   try {
     const data = await kv.get('latest_ai_offers');
 

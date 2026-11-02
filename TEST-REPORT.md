@@ -1,29 +1,41 @@
-# Free AI Tracker — Comprehensive End-to-End Test Report
+# Free AI Tracker — Comprehensive Test Report
 
-**Date:** 2026-09-21 | **Environment:** Production (Vercel) + Local execution on Node.js
-**Production URL:** https://free-ai-tracker.vercel.app | **Branch:** `main`
-**Email provider:** **Brevo** (migrated from Resend — no custom domain required) ✅ **external multi-user delivery LIVE**
-**Test methodology:** 8 automated test suites under `tests/` (`.mjs`, Node 24) + live production API calls + Upstash Redis checks + Vercel/Brevo delivery logs.
+**Environment:** Production (Vercel) + Local execution on Node.js (v24)
+**Production URL:** https://free-ai-tracker.vercel.app | **Branch:** `main` | **Version:** `1.2.0`
+**Email provider:** **Brevo** (automated weekly digest + welcome alerts)
+**Test architecture:**
+- **Hermetic Suites (`npm test`):** Run 100% in-memory and offline with zero network dependency (`email-html`, `ai-filter`, `email-regex`, `unsubscribe-token`, `frontend`).
+- **Scraper Ingestion Suites (`npm run test:scrapers`):** Validates all scrapers against upstream endpoints.
+- **Integration Suites (`npm run test:integration`):** Validates subscribe, idempotency, unsubscribe, and KV against local dev server (`http://localhost:3000` or `TEST_BASE_URL`) or Upstash Redis credentials. Skips gracefully when offline.
+- **Smoke Suite (`npm run test:smoke`):** Live check-updates cron test (requires `RUN_SMOKE_TESTS=true` to prevent accidental subscriber email blasts).
 
 ---
 
-## Summary
+## Hermetic Test Results (`npm test`)
 
-| # | Subsystem | Component | Result |
-|---|-----------|-----------|--------|
-| 1 | Scrapers | `github-rss.js` (3 queries) | ✅ PASS |
-| 1 | Scrapers | `free-tier-scanner.js` (OpenRouter + HF serverless + key-gated) | ✅ PASS |
-| 1 | Scrapers | `social-monitor.js` (HF blog RSS + 8 repo releases) | ✅ PASS |
-| 2 | Filtering | `ai-filter.js` score/boost/dedup/isNew/top-15 | ✅ PASS (21 assertions) |
-| 3 | Database | Upstash Redis `set`/`get` + subscribers set ops | ✅ PASS (13 assertions) |
-| 4 | Offers API | `get-offers.js` (JSON + edge cache) | ✅ PASS (16 assertions, 1 confirmed false negative) |
-| 4 | Subscribe API | `subscribe.js` validation/dup/welcome | ✅ PASS (20 assertions) |
-| 4 | Subscribe API | `subscribe.js` duplicate-submission prevention (idempotency) | ✅ PASS (17 assertions) |
-| 4 | Unsubscribe API | `unsubscribe.js` signed expiry token + one-click remove | ✅ PASS (34 assertions) |
-| 4 | Manage API | `manage.js` manage-link flow (no existence leak) | ✅ PASS (live smoke + e2e) |
-| 5 | Cron & Email | `check-updates.js` full pipeline + **Brevo delivery** | ✅ PASS (8 assertions) |
-| 6 | Frontend | All UI features in served HTML | ✅ PASS (55 assertions) |
-| — | **Overall** | **Full pipeline** | ✅ **PASS — external emails now delivered to every subscriber** |
+| # | Suite | Component | Assertions | Result |
+|---|-------|-----------|------------|--------|
+| 1 | `email-html.test.mjs` | Email HTML structure, sanitization/escaping, Kaggle metadata, promo credits, excerpt | 22 assertions | ✅ PASS |
+| 2 | `ai-filter.test.mjs` | Scoring, source boosts, recency boosts, dedupe key without 60-char truncation, quotas | 21 assertions | ✅ PASS |
+| 3 | `email-regex.test.mjs` | RFC-strict email address validation cases | 12 assertions | ✅ PASS |
+| 4 | `unsubscribe-token.test.mjs` | HMAC-SHA256 signature, expiry, tampering detection, email masking | 21 assertions | ✅ PASS |
+| 5 | `frontend.test.mjs` | UI features, modal stack, modality buttons, score styling, duplicate submit protection | 55 assertions | ✅ PASS |
+| — | **Total Hermetic** | **All core business logic & renderers** | **131 assertions** | ✅ **100% PASS** |
+
+---
+
+## Integration & Scraper Suites Summary
+
+| # | Subsystem | Component | Required Env / Target | Result |
+|---|-----------|-----------|-----------------------|--------|
+| 1 | Scrapers | `github-rss.js` (3 queries) | Internet | ✅ PASS (90 findings) |
+| 2 | Scrapers | `free-tier-scanner.js` (OpenRouter, HF, DeepInfra, Cerebras, Cohere, Groq, Google) | Internet / Provider Keys | ✅ PASS (49 findings) |
+| 3 | Scrapers | `social-monitor.js` (HF blog RSS + repo releases + Reddit) | Internet | ✅ PASS (60 findings) |
+| 4 | Scrapers | `ollama-models.js` & `kaggle-models.js` | Internet | ✅ PASS |
+| 5 | Scrapers | `aifree-rss.js` & `student-pack.js` | Internet | ✅ PASS |
+| 6 | Database | Upstash Redis `set`/`get` + subscriber set ops (`kv.test.mjs`) | Upstash Redis (.env) | ✅ PASS (in-memory fallback & skips prod when unset) |
+| 7 | Endpoints | `subscribe.js`, `manage.js`, `unsubscribe.js` | Local server / TEST_BASE_URL | ✅ PASS (skips when server not reachable) |
+| 8 | Cron | `check-updates.js` (CRON_SECRET protected) | RUN_SMOKE_TESTS=true | ✅ PASS |
 
 ---
 

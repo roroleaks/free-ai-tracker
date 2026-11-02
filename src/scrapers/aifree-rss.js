@@ -22,10 +22,12 @@ export function parseAifreeRss(xml) {
       description: description
         .replace(/<!\[CDATA\[|\]\]>/g, '')
         .replace(/&apos;/g, "'")
-        .replace(/&amp;/g, '&')
+        .replace(/&#x27;/g, "'")
+        .replace(/&#39;/g, "'")
         .replace(/&quot;/g, '"')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
@@ -40,15 +42,20 @@ export function parseAifreeRss(xml) {
 }
 
 export async function fetchAifreeOffers() {
-  const response = await fetch(AIFREE_FEED, {
-    headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
-  });
+  try {
+    const response = await fetch(AIFREE_FEED, {
+      headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
+    });
 
-  if (!response.ok) {
-    console.error(`aifree.dev feed failed with status ${response.status}`);
+    if (!response.ok) {
+      console.error(`aifree.dev feed failed with status ${response.status}`);
+      return [];
+    }
+
+    const xml = await response.text();
+    return parseAifreeRss(xml).slice(0, 20);
+  } catch (error) {
+    console.warn('[aifree-rss] network error:', error.message);
     return [];
   }
-
-  const xml = await response.text();
-  return parseAifreeRss(xml).slice(0, 20);
 }

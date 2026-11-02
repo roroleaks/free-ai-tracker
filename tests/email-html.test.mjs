@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { buildEmailHtml, buildWelcomeEmailHtml } from '../src/services/email-notifier.js';
+import { buildEmailHtml, buildWelcomeEmailHtml, excerpt } from '../src/services/email-notifier.js';
 import { buildUnsubscribeUrl } from '../src/utils/unsubscribe.js';
 
 let passes = 0;
@@ -59,6 +59,43 @@ console.log('\n=== Unsubscribe URL util ===');
 const url = buildUnsubscribeUrl('a@b.dev');
 check('url is absolute & token-signed', url.startsWith('https://') && url.includes('token='));
 check('url does not expose raw email', !url.includes('a@b.dev') && !url.includes('%40') && !url.includes('a%40b'));
+
+console.log('\n=== HTML injection / sanitization (STEP 6) ===');
+const maliciousHtml = buildEmailHtml([
+  {
+    title: '<img src=x onerror=alert(1)>Free GPU',
+    description: '<script>alert("xss")</script>Test body',
+    url: 'javascript:alert(1)',
+    source: 'reddit',
+  },
+], 'victim@test.dev');
+check('XSS in title escaped', maliciousHtml.includes('&lt;img src=x onerror=alert(1)&gt;Free GPU') && !maliciousHtml.includes('<img src=x onerror=alert(1)>'));
+check('unsafe javascript: URL sanitized', !maliciousHtml.includes('href="javascript:alert(1)"') && maliciousHtml.includes('href="#"'));
+
+console.log('\n=== Excerpt word-boundary cut & ellipsis (STEP 13) ===');
+const exA = excerpt('a '.repeat(200), 160);
+const exB = excerpt('a'.repeat(300), 160);
+check('excerpt cut at space + ellipsis', exA.endsWith('…') && !/a$/.test(exA));
+check('excerpt without spaces hard-cuts + ellipsis', exB.endsWith('…') && exB.length === 161);
+
+console.log('\n=== Kaggle metadata & signup-credit section (STEP 14 & 21) ===');
+const kaggleOffer = {
+  title: 'Kaggle: Gemma 2 9B',
+  description: 'Open weights model on Kaggle Hub',
+  url: 'https://kaggle.com/models/google/gemma-2',
+  source: 'kaggle',
+};
+const creditOffer = {
+  title: 'DeepInfra: Qwen 2.5',
+  description: 'Fast serverless deployment',
+  url: 'https://deepinfra.com/qwen',
+  source: 'deepinfra',
+  offerType: 'signup-credit',
+};
+const mixedHtml = buildEmailHtml([kaggleOffer, creditOffer], 'user@test.dev');
+check('Kaggle badge and emoji rendered', mixedHtml.includes('🏅 Kaggle') && mixedHtml.includes('#20BEFF'));
+check('Signup credit section header present', mixedHtml.includes('Signup &amp; Promo Credits'));
+check('PROMO CREDIT badge rendered', mixedHtml.includes('PROMO CREDIT'));
 
 console.log(`\n=== EMAIL-HTML TEST: ${passes} passed, ${failures} failed ===`);
 process.exit(failures ? 1 : 0);

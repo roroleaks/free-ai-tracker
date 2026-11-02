@@ -5,14 +5,26 @@ function check(name, cond, detail = '') {
   else { failures++; console.log(`FAIL  ${name}${detail ? ` (${detail})` : ''}`); }
 }
 
-const BASE = 'https://free-ai-tracker.vercel.app';
+const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000';
+
+if (process.env.RUN_SMOKE_TESTS !== 'true') {
+  console.log('SKIP  check-updates live smoke test (run via "npm run test:smoke" to prevent accidental email blasts)');
+  process.exit(0);
+}
 
 console.log('=== POST/GET /api/check-updates (cron handler) ===');
 const t0 = Date.now();
 let r;
+const headers = {};
+if (process.env.CRON_SECRET) {
+  headers.Authorization = `Bearer ${process.env.CRON_SECRET}`;
+}
 try {
-  r = await fetch(`${BASE}/api/check-updates`, { method: 'GET', cache: 'no-store' });
-} catch (e) { failures++; console.log('FAIL  fetch threw:', e.message); }
+  r = await fetch(`${BASE}/api/check-updates`, { method: 'GET', headers, cache: 'no-store' });
+} catch (e) {
+  console.log(`SKIP  check-updates (${BASE} not reachable: ${e.message})`);
+  process.exit(0);
+}
 
 if (r) {
   check('HTTP 200', r.status === 200, `status=${r.status}`);

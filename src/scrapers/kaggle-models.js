@@ -26,7 +26,7 @@ export function parseKaggleModels(data) {
         description: desc || 'Open weights model available on Kaggle Hub.',
         url: m.url.startsWith('http') ? m.url : `https://www.kaggle.com${m.url}`,
         source: KAGGLE_SOURCE,
-        date: new Date().toISOString(),
+        isNew: false,
       };
     });
 }

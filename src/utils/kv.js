@@ -13,11 +13,28 @@ function hasUpstashEnv() {
 
 const redis = hasUpstashEnv() ? Redis.fromEnv() : null;
 
+if (!redis && process.env.VERCEL_ENV === 'production') {
+  console.error('[kv] FATAL: Redis env vars missing in production — data will not persist');
+}
+
 function memoryWarning(key) {
   console.warn(`[kv] Redis not configured — using in-memory store for "${key}"`);
 }
 
 export const kv = {
+  async incr(key, ttlSeconds = 86400) {
+    if (redis) {
+      const hits = await redis.incr(key);
+      if (hits === 1) {
+        await redis.expire(key, ttlSeconds);
+      }
+      return hits;
+    }
+    const current = (memory.get(key) || 0) + 1;
+    memory.set(key, current);
+    memoryWarning(key);
+    return current;
+  },
   async set(key, value) {
     if (redis) {
       await redis.set(key, value);

@@ -39,16 +39,25 @@ const after = await kv.smembers(SUB_KEY);
 check('smembers after removal = 1', after.length === 1 && after[0] === emailB, JSON.stringify(after));
 
 console.log('\n=== KV real keys in production ===');
-const latest = await kv.get('latest_ai_offers');
-check('latest_ai_offers exists', Boolean(latest), 'null');
-if (latest) {
-  check('has findings array', Array.isArray(latest.findings), typeof latest.findings);
-  check('has timestamps', typeof latest.timestamp === 'string' && !isNaN(Date.parse(latest.timestamp)));
-  check(`latest_ai_offers: total=${latest.totalFindings} relevant=${latest.relevantFindings}`, latest.relevantFindings >= 0);
+const hasRedisCreds = Boolean(
+  (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) ||
+  (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+);
+
+if (!hasRedisCreds) {
+  console.log('SKIP  real keys in production check (requires Upstash Redis credentials in .env)');
+} else {
+  const latest = await kv.get('latest_ai_offers');
+  check('latest_ai_offers exists', Boolean(latest), 'null');
+  if (latest) {
+    check('has findings array', Array.isArray(latest.findings), typeof latest.findings);
+    check('has timestamps', typeof latest.timestamp === 'string' && !isNaN(Date.parse(latest.timestamp)));
+    check(`latest_ai_offers: total=${latest.totalFindings} relevant=${latest.relevantFindings}`, latest.relevantFindings >= 0);
+  }
+  const subs = await kv.smembers('subscribers');
+  check('subscribers key exists', Array.isArray(subs), 'null');
+  if (subs.length) console.log(`  subscribers (${subs.length}): ${subs.join(', ')}`);
 }
-const subs = await kv.smembers('subscribers');
-check('subscribers key exists', Array.isArray(subs), 'null');
-if (subs.length) console.log(`  subscribers (${subs.length}): ${subs.join(', ')}`);
 
 // cleanup test keys
 await kv.srem(SUB_KEY, emailB);

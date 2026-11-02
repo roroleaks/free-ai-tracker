@@ -35,7 +35,7 @@ export function parseOllamaHtml(html) {
       description: desc || `Open weights model ${slug} ready for zero-cost local execution`,
       url: `https://ollama.com/library/${slug}`,
       source: OLLAMA_SOURCE,
-      date: new Date().toISOString(),
+      isNew: false,
     });
   }
 

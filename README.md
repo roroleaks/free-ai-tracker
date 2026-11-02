@@ -89,8 +89,13 @@ npm run dev
 ## Testing
 
 ```bash
-npm test                       # logger smoke test
+npm test              # hermetic suites: email-html, ai-filter, email-regex, unsubscribe-token, frontend
+npm run test:scrapers # live scraper integration validation (GitHub, HF, OpenRouter, DeepInfra, Ollama, etc.)
 node --check api/*.js src/**/*.js
+
+# Integration suites with running server or real credentials:
+npm run test:integration # runs subscribe, subscribe-idempotency, unsubscribe, kv suites
+# Live-cron smoke: npm run test:smoke (triggers check-updates cron; emails real subscribers — never run casually)
 ```
 
-Scraper/filter/frontend suites run bare; KV-mutating suites (kv, subscribe, unsubscribe) need real Upstash creds via `node --env-file=.env` and must run **sequentially** (they share the same `subscribers` set). Email suites run hermetically in-memory and via the `BREVO_API_URL` injectable seam.
+Hermetic suites run completely offline and in-memory with zero network dependency. Integration suites automatically skip gracefully when the target server or Upstash Redis credentials are not configured.

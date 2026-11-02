@@ -12,6 +12,11 @@ import { logger } from '../src/utils/logger.js';
 import { kv } from '../src/utils/kv.js';
 
 export default async function handler(req, res) {
+  const auth = req.headers?.authorization || '';
+  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
   const startTime = Date.now();
   logger.info('Starting AI offer check...');
 
@@ -56,14 +61,12 @@ export default async function handler(req, res) {
       const recipients = subscribers.length > 0 ? subscribers : [process.env.EMAIL_TO].filter(Boolean);
 
       if (recipients.length > 0) {
-        for (const recipient of recipients) {
-          try {
-            await sendNotification(relevantFindings, recipient);
-            logger.info(`Digest sent to ${recipient}`);
-          } catch (e) {
-            logger.error(`Failed to email ${recipient}`, e);
-          }
-        }
+        await Promise.allSettled(recipients.map((recipient) =>
+          sendNotification(relevantFindings, recipient).then(
+            () => logger.info(`Digest sent to ${recipient}`),
+            (e) => logger.error(`Failed to email ${recipient}`, e),
+          )
+        ));
       } else {
         logger.warn('No subscribers and no EMAIL_TO configured — digest not emailed');
       }

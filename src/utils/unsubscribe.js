@@ -5,7 +5,12 @@ const TOKEN_TTL_DAYS = Number(process.env.UNSUBSCRIBE_TOKEN_TTL_DAYS || 30);
 const TOKEN_TTL_MS = TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 function secret() {
-  return process.env.UPSTASH_REDIS_REST_TOKEN || process.env.BREVO_API_KEY || 'free-ai-tracker';
+  const s = process.env.UNSUBSCRIBE_SECRET;
+  if (s) return s;
+  if (process.env.VERCEL_ENV === 'production') {
+    throw new Error('UNSUBSCRIBE_SECRET is required in production');
+  }
+  return 'dev-only-insecure-secret'; // local/test only
 }
 
 function b64url(buf) {

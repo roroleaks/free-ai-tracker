@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fetch from 'node-fetch';
 import { createServer } from 'node:http';
 import { kv } from '../src/utils/kv.js';
 
@@ -26,49 +27,54 @@ function runHandler(fn, req, res) {
   return Promise.resolve(fn(req, res));
 }
 
-const server = createServer((req, res) => {
-  const url = new URL(req.url, 'http://127.0.0.1');
-  const routes = {
-    '/api/subscribe': async () => {
-      let raw = '';
-      for await (const chunk of req) raw += chunk;
-      const mockReq = { method: 'POST', body: raw, url: req.url };
-      const mockRes = makeMockRes();
-      await runHandler(handlerRefs.subscribe, mockReq, mockRes);
-      res.statusCode = mockRes._status;
-      res.setHeader('Content-Type', 'application/json');
-      return res.end(JSON.stringify(mockRes._body));
-    },
-    '/api/unsubscribe': async () => {
-      const mockReq = {
-        method: 'GET',
-        url: req.url,
-        query: Object.fromEntries(url.searchParams),
-        headers: { accept: req.headers.accept || 'text/html' },
-      };
-      const mockRes = makeMockRes();
-      await runHandler(handlerRefs.unsubscribe, mockReq, mockRes);
-      res.statusCode = mockRes._status;
-      for (const [k, v] of Object.entries(mockRes._headers)) res.setHeader(k, v);
-      if (typeof mockRes._body === 'string') {
-        res.setHeader('Content-Type', 'text/html');
-        return res.end(mockRes._body);
-      }
-      res.setHeader('Content-Type', 'application/json');
-      return res.end(JSON.stringify(mockRes._body));
-    },
-  };
-
-  if (routes[url.pathname]) return routes[url.pathname]().catch((e) => { res.statusCode = 500; res.end(JSON.stringify({ error: e.message })); });
-
-  // Mock Brevo SMTP endpoint: capture the payload, reply like Brevo.
-  let raw = '';
-  req.on('data', (c) => raw += c);
-  req.on('end', () => {
-    try { captured.push(JSON.parse(raw || '{}')); } catch { captured.push({ raw }); }
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ messageId: 'mocked-' + Date.now() }));
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on('data', (c) => raw += c);
+    req.on('end', () => resolve(raw));
   });
+}
+
+const server = createServer(async (req, res) => {
+  req.on('error', () => {});
+  res.on('error', () => {});
+  const url = new URL(req.url, 'http://127.0.0.1');
+
+  if (url.pathname === '/api/subscribe') {
+    const raw = await parseBody(req);
+    const mockReq = { method: 'POST', body: raw, url: req.url };
+    const mockRes = makeMockRes();
+    await runHandler(handlerRefs.subscribe, mockReq, mockRes);
+    res.statusCode = mockRes._status;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify(mockRes._body));
+  }
+
+  if (url.pathname === '/api/unsubscribe') {
+    await parseBody(req);
+    const mockReq = {
+      method: 'GET',
+      url: req.url,
+      query: Object.fromEntries(url.searchParams),
+      headers: { accept: req.headers.accept || 'text/html' },
+    };
+    const mockRes = makeMockRes();
+    await runHandler(handlerRefs.unsubscribe, mockReq, mockRes);
+    res.statusCode = mockRes._status;
+    for (const [k, v] of Object.entries(mockRes._headers)) res.setHeader(k, v);
+    if (typeof mockRes._body === 'string') {
+      res.setHeader('Content-Type', 'text/html');
+      return res.end(mockRes._body);
+    }
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify(mockRes._body));
+  }
+
+  // Mock Brevo SMTP endpoint
+  const raw = await parseBody(req);
+  try { captured.push(JSON.parse(raw || '{}')); } catch { captured.push({ raw }); }
+  res.setHeader('Content-Type', 'application/json');
+  return res.end(JSON.stringify({ messageId: 'mocked-' + Date.now() }));
 });
 
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -137,4 +143,5 @@ await kv.srem('subscribers', TEST_EMAIL);
 await new Promise((resolve) => server.close(resolve));
 
 console.log(`\n=== UNSUBSCRIBE E2E (MOCKED MAIL) TEST: ${passes} passed, ${failures} failed ===`);
+process.exit(failures ? 1 : 0);
 process.exit(failures ? 1 : 0);

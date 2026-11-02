@@ -18,7 +18,12 @@ const SOURCE_META = {
   deepinfra: { label: 'DeepInfra', color: '#4f46e5', light: '#eef2ff' },
   cerebras: { label: 'Cerebras', color: '#ea580c', light: '#fff7ed' },
   cohere: { label: 'Cohere', color: '#0f766e', light: '#f0fdfa' },
+  kaggle: { label: 'Kaggle', color: '#20BEFF', light: '#e8f7fd' },
 };
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
 
 function sourceMeta(source) {
   return SOURCE_META[source] || { label: source, color: '#4b5563', light: '#f3f4f6' };
@@ -31,9 +36,9 @@ function stripTags(text) {
 function excerpt(text, max = 160) {
   const clean = stripTags(text);
   if (!clean) return '';
-  const words = (clean.length > max ? clean.slice(0, max) : clean);
-  const cut = words.lastIndexOf(' ');
-  return words.length > max ? `${words.slice(0, cut)}…` : words;
+  if (clean.length <= max) return clean;
+  const cut = clean.lastIndexOf(' ', max);
+  return clean.slice(0, cut > 0 ? cut : max) + '…';
 }
 
 function getDomain(url) {
@@ -62,6 +67,7 @@ function siteDisplay(url) {
     'cerebras.ai': 'Cerebras',
     'inference.cerebras.ai': 'Cerebras',
     'cohere.com': 'Cohere',
+    'kaggle.com': 'Kaggle',
   };
   return known[domain] || domain || 'Learn more';
 }
@@ -87,6 +93,7 @@ function sourceEmoji(source) {
     deepinfra: '🚀',
     cerebras: '⚡',
     cohere: '💬',
+    kaggle: '🏅',
   }[source] || '⚡';
 }
 
@@ -97,6 +104,8 @@ function buildItemHtml(f, index) {
   const abstract = excerpt(f.description, 180) || 'No description available';
   const score = typeof f.score === 'number' ? Math.round(f.score * 100) : null;
   const isNew = f.isNew === true;
+  const isPromoCredit = f.offerType === 'signup-credit';
+  const safeUrl = /^https?:\/\//i.test(f.url || '') ? f.url : '#';
 
   return `
     <tr>
@@ -115,11 +124,12 @@ function buildItemHtml(f, index) {
                     <div style="margin-bottom: 8px;">
                       <span style="display: inline-block; background: ${meta.color}; color: #ffffff; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px;">${sourceEmoji(f.source)} ${meta.label}</span>
                       ${isNew ? '<span style="display: inline-block; background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; margin-left: 6px;">NEW</span>' : ''}
+                      ${isPromoCredit ? '<span style="display: inline-block; background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; margin-left: 6px;">PROMO CREDIT</span>' : ''}
                       ${score !== null ? `<span style="display: inline-block; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; margin-left: 6px;">Relevance ${score}%</span>` : ''}
                     </div>
-                    <h3 style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 700; color: #0f172a; line-height: 1.35;">${f.title}</h3>
-                    <p style="margin: 0 0 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 600; color: #64748b; text-transform: lowercase;">${site}</p>
-                    <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 1.6; color: #334155;">${abstract}</p>
+                    <h3 style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 700; color: #0f172a; line-height: 1.35;">${escapeHtml(f.title)}</h3>
+                    <p style="margin: 0 0 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 600; color: #64748b; text-transform: lowercase;">${escapeHtml(site)}</p>
+                    <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 1.6; color: #334155;">${escapeHtml(abstract)}</p>
                   </td>
                 </tr>
               </table>
@@ -127,7 +137,7 @@ function buildItemHtml(f, index) {
           </tr>
           <tr>
             <td style="padding: 0 20px 18px; text-align: right; border-top: 1px solid #f8fafc;">
-              <a href="${f.url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: ${meta.color}; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; padding: 9px 18px; border-radius: 8px;">View offer →</a>
+              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: ${meta.color}; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; padding: 9px 18px; border-radius: 8px;">View offer →</a>
             </td>
           </tr>
         </table>
@@ -137,7 +147,25 @@ function buildItemHtml(f, index) {
 }
 
 function buildEmailHtml(findings, recipient) {
-  const items = (findings || []).map(buildItemHtml).join('');
+  const standard = (findings || []).filter(f => f.offerType !== 'signup-credit');
+  const promo = (findings || []).filter(f => f.offerType === 'signup-credit');
+
+  let itemsHtml = standard.map(buildItemHtml).join('');
+  if (promo.length > 0) {
+    if (standard.length > 0) {
+      itemsHtml += `
+        <tr>
+          <td style="padding: 24px 0 12px;">
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 16px;">
+              <span style="display: inline-block; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 12px; border-radius: 999px;">🎁 Signup &amp; Promo Credits</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    itemsHtml += promo.map(buildItemHtml).join('');
+  }
+  const items = itemsHtml;
   const subUrl = buildUnsubscribeUrl(recipient || process.env.EMAIL_TO || '');
   const dateFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -224,7 +252,7 @@ function buildWelcomeEmailHtml(email) {
       <body style="margin: 0; padding: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Hidden Preheader -->
         <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #ffffff; opacity: 0;">
-          Welcome to Free AI Tracker! Your subscription for ${email} is confirmed. 🎉
+          Welcome to Free AI Tracker! Your subscription for ${escapeHtml(email)} is confirmed. 🎉
         </div>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
@@ -244,7 +272,7 @@ function buildWelcomeEmailHtml(email) {
                 <tr>
                   <td style="padding: 28px 28px 24px;">
                     <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">Hey there,</p>
-                    <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">You're all set! Your subscription to <strong>${email}</strong> is confirmed. 🎉</p>
+                    <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">You're all set! Your subscription to <strong>${escapeHtml(email)}</strong> is confirmed. 🎉</p>
                     <p style="margin: 0 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">Every week we scan the web for the best <strong>free</strong> AI models, platforms, and open-source releases — and deliver a hand-picked digest straight to your inbox.</p>
                     
                     <table role="presentation" cellpadding="0" cellspacing="0" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; margin-bottom: 22px;" width="100%">
@@ -427,4 +455,4 @@ export async function sendManageEmail(email) {
   });
 }
 
-export { buildEmailHtml, buildWelcomeEmailHtml, buildManageEmailHtml };
+export { buildEmailHtml, buildWelcomeEmailHtml, buildManageEmailHtml, excerpt, buildItemHtml };

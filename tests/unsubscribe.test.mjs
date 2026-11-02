@@ -8,7 +8,7 @@ function check(name, cond, detail = '') {
   else { failures++; console.log(`FAIL  ${name}${detail ? ` (${detail})` : ''}`); }
 }
 
-const BASE = 'https://free-ai-tracker.vercel.app';
+const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000';
 const TEST_EMAIL = `unsub.e2e.${Date.now()}@test.dev`;
 
 async function get(path) {
@@ -41,6 +41,20 @@ check('empty token => invalid', parseUnsubscribeToken('').status === 'invalid');
 check('masked email hides local part', maskEmail('john.doe@gmail.com') === 'jo******@gmail.com', maskEmail('john.doe@gmail.com'));
 
 import { kv } from '../src/utils/kv.js';
+
+let serverAvailable = false;
+try {
+  await fetch(`${BASE}/api/unsubscribe`, { method: 'GET', signal: AbortSignal.timeout(1500) });
+  serverAvailable = true;
+} catch {
+  serverAvailable = false;
+}
+
+if (!serverAvailable) {
+  console.log(`\nSKIP  network integration tests (${BASE} not reachable — start server or set TEST_BASE_URL)`);
+  console.log(`\n=== UNSUBSCRIBE TEST: ${passes} passed, ${failures} failed (network skipped) ===`);
+  process.exit(0);
+}
 
 console.log('\n=== Invalid / tampered / expired (must not reveal existence) ===');
 for (const [label, tkn] of [['none', ''], ['garbage', 'garbage'], ['tampered', tampered], ['expired', expired]]) {

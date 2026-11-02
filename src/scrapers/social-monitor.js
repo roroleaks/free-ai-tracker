@@ -34,6 +34,18 @@ function apiHeaders() {
   return headers;
 }
 
+const REPO_SOURCE = {
+  'ollama/ollama': 'ollama',
+  'ggerganov/llama.cpp': 'github',
+  'ggml-org/llama.cpp': 'github',
+  'huggingface/transformers': 'huggingface',
+  'vercel/ai': 'vercel-ai-sdk',
+  'vllm-project/vllm': 'github',
+  'microsoft/autogen': 'github',
+  'comfyanonymous/ComfyUI': 'github',
+  'openai/openai-python': 'github',
+};
+
 async function fetchReleases(repo) {
   const url = `https://api.github.com/repos/${repo}/releases?per_page=5`;
   const response = await fetch(url, { headers: apiHeaders() });
@@ -50,7 +62,7 @@ async function fetchReleases(repo) {
     title: `${repo.split('/')[1]} ${item.tag_name}`,
     description: (item.body || 'Open-source release update').slice(0, 500),
     url: item.html_url,
-    source: 'vercel-ai-sdk',
+    source: REPO_SOURCE[repo] || 'github',
     date: item.published_at || new Date().toISOString(),
   }));
 }
@@ -244,6 +256,10 @@ export async function fetchSocialUpdates() {
     } else {
       // No OAuth creds: best-effort RSS fallback, sequential + throttled,
       // capped to avoid blowing the serverless timeout budget.
+      const skipped = SUBREDDITS.slice(5);
+      if (skipped.length) {
+        console.warn(`[social-monitor] RSS fallback: skipping ${skipped.length} subreddits (no Reddit OAuth): ${skipped.join(', ')}`);
+      }
       for (const sub of SUBREDDITS.slice(0, 5)) {
         const posts = await fetchSubredditPosts(sub);
         foundReddit.push(...posts);

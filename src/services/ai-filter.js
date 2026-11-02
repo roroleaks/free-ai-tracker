@@ -40,8 +40,14 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const GRACE_MS = 60 * 60 * 1000;
 
 function isNewModel(finding, now = Date.now()) {
+  if (finding?.isNew === false) return false;
   const date = finding?.date ? new Date(finding.date) : null;
   return Boolean(date && !Number.isNaN(date.getTime()) && now - date.getTime() <= NEW_MODEL_DAYS * DAY_MS + GRACE_MS);
+}
+
+function hasStrongHint(finding) {
+  const text = `${finding.title} ${finding.description || ''}`.toLowerCase();
+  return STRONG_HINTS.some(({ phrase }) => text.includes(phrase));
 }
 
 function scoreItem(finding) {
@@ -64,9 +70,11 @@ function scoreItem(finding) {
 }
 
 function dedupeKey(finding) {
+  if (finding.url && !finding.url.startsWith('https://example.com')) {
+    return 'url:' + finding.url;
+  }
   const title = (finding.title || '').toLowerCase().trim();
-  const slug = title.replace(/[^a-z0-9]+/g, ' ').trim();
-  return slug.slice(0, 60);
+  return 'title:' + title.replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 function dedupe(findings) {
@@ -81,13 +89,49 @@ function dedupe(findings) {
   return [...seen.values()];
 }
 
+function compareFindings(a, b) {
+  if (Math.abs(b.score - a.score) > 1e-9) {
+    return b.score - a.score;
+  }
+  const timeA = a.date ? new Date(a.date).getTime() : 0;
+  const timeB = b.date ? new Date(b.date).getTime() : 0;
+  const validA = !isNaN(timeA) ? timeA : 0;
+  const validB = !isNaN(timeB) ? timeB : 0;
+  return validB - validA;
+}
+
 export async function filterAndScore(findings) {
   const scored = findings
     .filter(Boolean)
+    // Filter out noisy GitHub search results that lack any strong free/tier hints
+    .filter(f => !(f.source === 'github' && f.isSearch && !hasStrongHint(f)))
     .map(finding => ({ ...finding, score: scoreItem(finding), isNew: isNewModel(finding) }));
 
   const deduped = dedupe(scored);
-  return deduped.sort((a, b) => b.score - a.score).slice(0, 15);
+  deduped.sort(compareFindings);
+
+  // Per-source quota: max 5 per source before final top 15, backfilling if needed
+  const selected = [];
+  const remaining = [];
+  const sourceCounts = new Map();
+
+  for (const item of deduped) {
+    const src = item.source || 'unknown';
+    const count = sourceCounts.get(src) || 0;
+    if (count < 5) {
+      selected.push(item);
+      sourceCounts.set(src, count + 1);
+    } else {
+      remaining.push(item);
+    }
+  }
+
+  if (selected.length < 15 && remaining.length > 0) {
+    const needed = 15 - selected.length;
+    selected.push(...remaining.slice(0, needed));
+  }
+
+  return selected.slice(0, 15);
 }
 
 export { isNewModel, NEW_MODEL_DAYS };

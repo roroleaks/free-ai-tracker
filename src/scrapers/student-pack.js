@@ -64,7 +64,7 @@ export function parseStudentPackHtml(html) {
         description: offerText || about || `Free offer for students from ${name}`,
         url: `${PACK_URL}#${slug}`,
         source: PACK_SOURCE,
-        date: new Date().toISOString(),
+        isNew: false,
       });
     }
   }
@@ -73,15 +73,24 @@ export function parseStudentPackHtml(html) {
 }
 
 export async function fetchStudentPackOffers() {
-  const response = await fetch(PACK_URL, {
-    headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
-  });
+  try {
+    const response = await fetch(PACK_URL, {
+      headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
+    });
 
-  if (!response.ok) {
-    console.error(`GitHub Student Pack fetch failed with status ${response.status}`);
+    if (!response.ok) {
+      console.error(`GitHub Student Pack fetch failed with status ${response.status}`);
+      return [];
+    }
+
+    const html = await response.text();
+    const findings = parseStudentPackHtml(html);
+    if (findings.length === 0) {
+      console.warn('[student-pack] parser drift: page 200 but 0 items parsed — scraper regexes need updating');
+    }
+    return findings;
+  } catch (error) {
+    console.warn('[student-pack] network error:', error.message);
     return [];
   }
-
-  const html = await response.text();
-  return parseStudentPackHtml(html);
 }

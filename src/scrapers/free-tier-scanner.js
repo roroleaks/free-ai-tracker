@@ -10,6 +10,8 @@ function parsePrice(value) {
   return parseFloat(normalized);
 }
 
+// Rule: A model is considered free tier only when both prompt and completion prices
+// parse to exactly 0. Missing, null, or non-numeric prices yield NaN and are rejected.
 function isFreeModel(model) {
   const pricing = model.pricing || {};
   const prompt = parsePrice(pricing.prompt);
@@ -32,8 +34,12 @@ export function scanOpenRouter() {
           description: model.description || 'Free AI model',
           url: `https://openrouter.ai/${model.id}`,
           source: 'openrouter',
-          date: new Date().toISOString(),
+          isNew: false,
         }));
+    })
+    .catch((error) => {
+      console.warn('[free-tier-scanner] OpenRouter scan error:', error.message);
+      return [];
     });
 }
 
@@ -47,13 +53,24 @@ export function scanHuggingFaceServerless() {
       if (!Array.isArray(models)) return [];
       return models
         .filter((m) => ['text-generation', 'image-text-to-text'].includes(m.pipeline_tag))
-        .map((model) => ({
-          title: model.id,
-          description: `Warm model available via HuggingFace serverless inference${model.tags?.length ? ` (${model.tags.slice(0, 4).join(', ')})` : ''}`,
-          url: `https://huggingface.co/${model.id}`,
-          source: 'huggingface',
-          date: model.createdAt || new Date().toISOString(),
-        }));
+        .map((model) => {
+          const item = {
+            title: model.id,
+            description: `Warm model available via HuggingFace serverless inference${model.tags?.length ? ` (${model.tags.slice(0, 4).join(', ')})` : ''}`,
+            url: `https://huggingface.co/${model.id}`,
+            source: 'huggingface',
+          };
+          if (model.createdAt) {
+            item.date = model.createdAt;
+          } else {
+            item.isNew = false;
+          }
+          return item;
+        });
+    })
+    .catch((error) => {
+      console.warn('[free-tier-scanner] HuggingFace scan error:', error.message);
+      return [];
     });
 }
 
@@ -70,10 +87,11 @@ export function scanDeepInfra() {
         .slice(0, 15)
         .map((model) => ({
           title: `DeepInfra: ${model.model_name}`,
-          description: `${model.description || 'Fast serverless model deployment'} ($1.80 free developer credits on signup)`,
+          description: `${model.description || 'Fast serverless model deployment'} (Free developer credits on signup)`,
           url: `https://deepinfra.com/${model.model_name}`,
           source: 'deepinfra',
-          date: model.create_ts || new Date().toISOString(),
+          offerType: 'signup-credit',
+          isNew: false,
         }));
     })
     .catch((error) => {
@@ -100,8 +118,12 @@ export function scanGroq() {
       description: `Available on Groq free tier${model.owned_by ? ` (${model.owned_by})` : ''}`,
       url: 'https://console.groq.com/docs/models',
       source: 'groq',
-      date: new Date().toISOString(),
-    })));
+      isNew: false,
+    })))
+    .catch((error) => {
+      console.warn('[free-tier-scanner] Groq scan error:', error.message);
+      return [];
+    });
 }
 
 export function scanCerebras() {
@@ -122,7 +144,7 @@ export function scanCerebras() {
       description: 'Ultra-fast inference on Cerebras Free Tier (1M tokens/day allowance)',
       url: 'https://inference.cerebras.ai/',
       source: 'cerebras',
-      date: new Date().toISOString(),
+      isNew: false,
     })))
     .catch((error) => {
       console.warn('[free-tier-scanner] Cerebras scan error:', error.message);
@@ -148,8 +170,12 @@ export function scanTogether() {
       description: `Model served by Together AI${model.type ? ` (${model.type})` : ''}`,
       url: 'https://www.together.ai/pricing',
       source: 'together',
-      date: new Date().toISOString(),
-    })));
+      isNew: false,
+    })))
+    .catch((error) => {
+      console.warn('[free-tier-scanner] Together scan error:', error.message);
+      return [];
+    });
 }
 
 export function scanCohere() {
@@ -170,7 +196,7 @@ export function scanCohere() {
       description: `Available on Cohere Free Trial API tier${model.endpoints ? ` (${model.endpoints.join(', ')})` : ''}`,
       url: 'https://cohere.com/pricing',
       source: 'cohere',
-      date: new Date().toISOString(),
+      isNew: false,
     })))
     .catch((error) => {
       console.warn('[free-tier-scanner] Cohere scan error:', error.message);
@@ -198,14 +224,18 @@ export function scanGoogleAIStudio() {
         description: `Free-tier model on Google AI Studio${model.description ? ` — ${model.description}` : ''}`,
         url: 'https://aistudio.google.com/pricing',
         source: 'google',
-        date: new Date().toISOString(),
-      })));
+        isNew: false,
+      })))
+    .catch((error) => {
+      console.warn('[free-tier-scanner] Google AI Studio scan error:', error.message);
+      return [];
+    });
 }
 
 export async function scanFreeTiers() {
   const sources = [
-    scanOpenRouter().catch((error) => { console.error(error.message); return []; }),
-    scanHuggingFaceServerless().catch((error) => { console.error(error.message); return []; }),
+    scanOpenRouter(),
+    scanHuggingFaceServerless(),
     scanDeepInfra(),
     scanGroq(),
     scanCerebras(),
@@ -214,6 +244,8 @@ export async function scanFreeTiers() {
     scanGoogleAIStudio(),
   ];
 
-  const results = await Promise.all(sources);
-  return results.flat();
+  const results = await Promise.allSettled(sources);
+  return results
+    .filter((r) => r.status === 'fulfilled' && Array.isArray(r.value))
+    .flatMap((r) => r.value);
 }

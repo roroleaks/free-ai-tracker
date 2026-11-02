@@ -49,7 +49,9 @@ export async function fetchGitHubReleases() {
           description: repo.description || `Trending repo with ${repo.stargazers_count} stars`,
           url: repo.html_url,
           source: 'github',
-          date: repo.updated_at || new Date().toISOString(),
+          isSearch: true,
+          isNew: false,
+          date: repo.updated_at,
         });
       }
     }
