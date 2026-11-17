@@ -111,33 +111,42 @@ function buildItemHtml(f, index) {
     <tr>
       <td style="padding: 0 0 16px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e2e8f0; border-radius: 14px; border-collapse: separate; overflow: hidden; background: #ffffff; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
+          <!-- Top Tag Bar -->
           <tr>
-            <td style="padding: 20px 20px 16px;">
+            <td style="padding: 18px 20px 10px; background: #ffffff;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="width: 46px; vertical-align: top;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="background: ${meta.light}; border-radius: 12px; border: 1px solid #e2e8f0; width: 44px; height: 44px; text-align: center;">
-                      <tr><td style="font-size: 22px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${icon ? `<img src="${icon}" alt="" width="22" height="22" style="vertical-align: middle; display: block; margin: 0 auto; border-radius: 4px;" onerror="this.style.display='none'">` : sourceEmoji(f.source)}</td></tr>
-                    </table>
-                  </td>
-                  <td style="vertical-align: top; padding-left: 14px;">
-                    <div style="margin-bottom: 8px;">
-                      <span style="display: inline-block; background: ${meta.color}; color: #ffffff; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px;">${sourceEmoji(f.source)} ${meta.label}</span>
-                      ${isNew ? '<span style="display: inline-block; background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; margin-left: 6px;">NEW</span>' : ''}
-                      ${isPromoCredit ? '<span style="display: inline-block; background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; margin-left: 6px;">PROMO CREDIT</span>' : ''}
-                      ${score !== null ? `<span style="display: inline-block; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; margin-left: 6px;">Relevance ${score}%</span>` : ''}
-                    </div>
-                    <h3 style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 700; color: #0f172a; line-height: 1.35;">${escapeHtml(f.title)}</h3>
-                    <p style="margin: 0 0 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 600; color: #64748b; text-transform: lowercase;">${escapeHtml(site)}</p>
-                    <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 1.6; color: #334155;">${escapeHtml(abstract)}</p>
+                  <td style="vertical-align: middle;">
+                    <span style="display: inline-block; background: ${meta.color}; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; line-height: 1.2;">${sourceEmoji(f.source)} ${meta.label}</span>
+                    ${isNew ? '<span style="display: inline-block; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">NEW</span>' : ''}
+                    ${isPromoCredit ? '<span style="display: inline-block; background: #fef3c7; border: 1px solid #fde68a; color: #b45309; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">PROMO CREDIT</span>' : ''}
+                    ${score !== null ? `<span style="display: inline-block; background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">Relevance ${score}%</span>` : ''}
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
+          <!-- Content Body -->
           <tr>
-            <td style="padding: 0 20px 18px; text-align: right; border-top: 1px solid #f8fafc;">
-              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: ${meta.color}; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; padding: 9px 18px; border-radius: 8px;">View offer →</a>
+            <td style="padding: 0 20px 14px;">
+              <h3 style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 17px; font-weight: 700; color: #0f172a; line-height: 1.35; letter-spacing: -0.01em;">${escapeHtml(f.title)}</h3>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 10px;">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    ${icon ? `<img src="${icon}" alt="" width="16" height="16" style="vertical-align: middle; display: inline-block; margin-right: 6px; border-radius: 3px;" onerror="this.style.display='none'">` : ''}
+                  </td>
+                  <td style="vertical-align: middle; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 600; color: #64748b; line-height: 1.2;">
+                    ${escapeHtml(site)}
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">${escapeHtml(abstract)}</p>
+            </td>
+          </tr>
+          <!-- Bottom Action Row -->
+          <tr>
+            <td style="padding: 12px 20px 16px; background: #f8fafc; border-top: 1px solid #f1f5f9; text-align: right;">
+              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0284c7; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; padding: 9px 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);">View offer →</a>
             </td>
           </tr>
         </table>
@@ -176,6 +185,14 @@ function buildEmailHtml(findings, recipient) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Free AI Tracker - Weekly AI Digest</title>
+        <style>
+          @media only screen and (max-width: 600px) {
+            .email-container { width: 100% !important; }
+            .header-padding { padding: 28px 18px !important; }
+            .body-padding { padding: 22px 16px 8px !important; }
+            .footer-padding { padding: 22px 16px !important; }
+          }
+        </style>
       </head>
       <body style="margin: 0; padding: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Hidden Preheader -->
@@ -185,27 +202,32 @@ function buildEmailHtml(findings, recipient) {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
             <td align="center">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 640px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width: 640px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);">
                 <!-- Header / Hero -->
                 <tr>
-                  <td style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 12px;">
+                  <td class="header-padding" style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 14px;">
                       <tr>
-                        <td style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 64px; height: 64px; text-align: center; font-size: 30px; line-height: 64px;">🤖</td>
+                        <td>
+                          <img src="https://free-ai-tracker.vercel.app/icon-192.png" alt="Free AI Tracker" width="56" height="56" style="border-radius: 14px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.35); border: 2px solid rgba(255,255,255,0.25);">
+                        </td>
                       </tr>
                     </table>
                     <h1 style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 27px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">Free AI Tracker</h1>
                     <div style="width: 44px; height: 3px; background: #38bdf8; border-radius: 2px; margin: 0 auto 10px;"></div>
-                    <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; color: #bae6fd; font-weight: 500;">Weekly AI Digest · ${findings.length} hand-picked offers</p>
+                    <div style="margin: 0 0 8px;">
+                      <span style="display: inline-block; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 9999px; padding: 4px 14px; font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 0.08em; text-transform: uppercase;">Weekly AI Digest · Ver. 1.2</span>
+                    </div>
+                    <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; color: #bae6fd; font-weight: 500;">${findings.length} hand-picked free AI models &amp; platform credits</p>
                     <p style="margin: 4px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #7dd3fc;">${dateFormatted}</p>
                     <div style="margin-top: 14px;">
-                      <span style="display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 4px 14px; font-size: 11.5px; font-weight: 600; color: #e0f2fe;">⚡ 100% Free Tiers &nbsp;•&nbsp; 🚀 Open Weights &nbsp;•&nbsp; 🎁 Promo Credits</span>
+                      <span style="display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 5px 14px; font-size: 11.5px; font-weight: 600; color: #e0f2fe;">⚡ 100% Free Tiers &nbsp;•&nbsp; 🚀 Open Weights &nbsp;•&nbsp; 🎁 Promo Credits</span>
                     </div>
                   </td>
                 </tr>
                 <!-- Body Section -->
                 <tr>
-                  <td style="padding: 28px 24px 8px;">
+                  <td class="body-padding" style="padding: 28px 24px 8px;">
                     <p style="margin: 0 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14.5px; line-height: 1.6; color: #334155;">
                       Hey there! 👋<br><br>
                       Here are the <strong>${findings.length} best free AI offers</strong> we found this week — new free credits, models, tiers and tools. Tap through for the details.
@@ -218,7 +240,7 @@ function buildEmailHtml(findings, recipient) {
                 </tr>
                 <!-- Footer -->
                 <tr>
-                  <td style="background: #0f172a; padding: 26px 28px; text-align: center;">
+                  <td class="footer-padding" style="background: #0f172a; padding: 26px 28px; text-align: center;">
                     <p style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 700; color: #f8fafc;">Free AI Tracker</p>
                     <p style="margin: 0 0 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #94a3b8;">Automated weekly digest of free AI tools, models &amp; credits.</p>
                     <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #64748b;">© ${new Date().getFullYear()} · Curated by Dr Raouf Roshdy · free-ai-tracker.vercel.app</p>
@@ -248,6 +270,13 @@ function buildWelcomeEmailHtml(email) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Welcome to Free AI Tracker!</title>
+        <style>
+          @media only screen and (max-width: 600px) {
+            .email-container { width: 100% !important; }
+            .header-padding { padding: 28px 18px !important; }
+            .body-padding { padding: 22px 18px !important; }
+          }
+        </style>
       </head>
       <body style="margin: 0; padding: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Hidden Preheader -->
@@ -257,20 +286,25 @@ function buildWelcomeEmailHtml(email) {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
             <td align="center">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 12px;">
+                  <td class="header-padding" style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 14px;">
                       <tr>
-                        <td style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 64px; height: 64px; text-align: center; font-size: 30px; line-height: 64px;">🗞️</td>
+                        <td>
+                          <img src="https://free-ai-tracker.vercel.app/icon-192.png" alt="Free AI Tracker" width="56" height="56" style="border-radius: 14px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.35); border: 2px solid rgba(255,255,255,0.25);">
+                        </td>
                       </tr>
                     </table>
                     <h1 style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">Welcome to Free AI Tracker!</h1>
-                    <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; color: #bae6fd;">Your weekly AI deals digest</p>
+                    <div style="margin: 0 0 8px;">
+                      <span style="display: inline-block; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 9999px; padding: 4px 14px; font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 0.08em; text-transform: uppercase;">Subscription Confirmed · Ver. 1.2</span>
+                    </div>
+                    <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; color: #bae6fd;">Your weekly AI deals &amp; open models digest</p>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 28px 28px 24px;">
+                  <td class="body-padding" style="padding: 28px 28px 24px;">
                     <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">Hey there,</p>
                     <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">You're all set! Your subscription to <strong>${escapeHtml(email)}</strong> is confirmed. 🎉</p>
                     <p style="margin: 0 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">Every week we scan the web for the best <strong>free</strong> AI models, platforms, and open-source releases — and deliver a hand-picked digest straight to your inbox.</p>
@@ -319,6 +353,13 @@ function buildManageEmailHtml(email) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Manage Your Subscription - Free AI Tracker</title>
+        <style>
+          @media only screen and (max-width: 600px) {
+            .email-container { width: 100% !important; }
+            .header-padding { padding: 28px 18px !important; }
+            .body-padding { padding: 22px 18px !important; }
+          }
+        </style>
       </head>
       <body style="margin: 0; padding: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Hidden Preheader -->
@@ -328,15 +369,22 @@ function buildManageEmailHtml(email) {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
             <td align="center">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
+                  <td class="header-padding" style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 14px;">
+                      <tr>
+                        <td style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 56px; height: 56px; text-align: center; font-size: 26px; line-height: 56px;">
+                          ⚙️
+                        </td>
+                      </tr>
+                    </table>
                     <h1 style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">Manage Your Subscription</h1>
                     <p style="margin: 6px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: #bae6fd;">Free AI Tracker · ${escapeHtml(email)}</p>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 28px 28px 24px;">
+                  <td class="body-padding" style="padding: 28px 28px 24px;">
                     <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #334155;">You asked for a way to manage your Free AI Tracker subscription. Here it is:</p>
                     <table role="presentation" cellpadding="0" cellspacing="0" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;" width="100%">
                       <tr>
