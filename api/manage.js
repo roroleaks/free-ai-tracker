@@ -2,28 +2,14 @@ import crypto from 'node:crypto';
 import { kv } from '../src/utils/kv.js';
 import { logger } from '../src/utils/logger.js';
 import { maskEmail } from '../src/utils/unsubscribe.js';
-import { sendManageEmail } from '../src/services/email-notifier.js';
+import { isValidEmail } from '../src/utils/email.js';
+import { sendManageEmail, sendWelcomeEmail } from '../src/services/email-notifier.js';
 
 const SUBSCRIBERS_KEY = 'subscribers';
+const WELCOME_PENDING_KEY = 'subscribers:pending';
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
-}
-
-function isValidEmail(email) {
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
-  if (email.length > 254) return false;
-  const [local, domain] = email.split('@');
-  if (local.length > 64) return false;
-  if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
-  if (domain.includes('..') || domain.startsWith('.') || domain.endsWith('.')) return false;
-  if (/[-.]$/.test(domain)) return false;
-  const labels = domain.split('.');
-  if (labels.length < 2) return false;
-  const tld = labels[labels.length - 1];
-  if (!/^[A-Za-z]{2,}$/.test(tld)) return false;
-  if (labels.some((l) => l.length === 0 || /^[-]/.test(l) || /[-]$/.test(l))) return false;
-  return true;
 }
 
 export default async function handler(req, res) {
@@ -35,9 +21,10 @@ export default async function handler(req, res) {
   }
 
   const forwarded = req.headers?.['x-forwarded-for'] || '';
+  // Note: off-Vercel, the XFF first-entry IP is client-controlled.
   const ip = (typeof forwarded === 'string' && forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || 'unknown'));
   const day = new Date().toISOString().slice(0, 10);
-  const rateKey = `ratelimit:${ip}:${day}`;
+  const rateKey = `ratelimit:manage:${ip}:${day}`;
   const hits = await kv.incr(rateKey);
   if (hits > 20) {
     logger.warn('manage rate limited', { requestId, event: 'rate_limited', ip });
@@ -64,6 +51,18 @@ export default async function handler(req, res) {
   try {
     const isSubscribed = (await kv.sismember(SUBSCRIBERS_KEY, email)) === 1;
     if (isSubscribed) {
+      // If the subscriber has a pending welcome email, retry delivering it and clear the flag on success.
+      try {
+        const isPending = (await kv.sismember(WELCOME_PENDING_KEY, email)) === 1;
+        if (isPending) {
+          await sendWelcomeEmail(email);
+          await kv.srem(WELCOME_PENDING_KEY, email);
+          logger.info('welcome retry sent', { requestId, event: 'welcome_retry_sent', emailMasked: maskEmail(email) });
+        }
+      } catch (welcomeErr) {
+        logger.error('welcome retry failed', { requestId, event: 'welcome_retry_failed', emailMasked: maskEmail(email), error: welcomeErr.message });
+      }
+
       try {
         await sendManageEmail(email);
         logger.info('manage link sent', { requestId, event: 'manage_link_sent', emailMasked: maskEmail(email) });

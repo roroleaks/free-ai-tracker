@@ -35,7 +35,9 @@ Required:
 Optional:
 - `GITHUB_TOKEN` - raises GitHub API rate limits
 - `REDDIT_CLIENT_ID` + `REDDIT_CLIENT_SECRET` - Reddit OAuth (RSS fallback is heavily rate-limited)
-- `GROQ_API_KEY`, `TOGETHER_API_KEY`, `GOOGLE_AI_STUDIO_KEY` - enable their respective scanners
+- `GOOGLE_AI_STUDIO_KEY` - Google AI Studio key (sent via `x-goog-api-key` header to prevent URL leakage)
+- `GROQ_API_KEY`, `TOGETHER_API_KEY`, `CEREBRAS_API_KEY`, `COHERE_API_KEY` - enable respective provider scanners
+- `CRON_SECRET` - authorization bearer token for `/api/check-updates` (required in production, fails closed with 500 if unset)
 - `EMAIL_TIMEOUT_MS` - mail provider request timeout (default `10000`)
 - `UNSUBSCRIBE_TOKEN_TTL_DAYS` - unsubscribe token lifetime (default `30`)
 
@@ -86,12 +88,18 @@ vercel deploy
 npm run dev
 ```
 
-## Testing
+## Testing & Security Hardening
+
+- **Hermetic Test Suite**: `npm test` runs 8 automated test suites (email templates, AI scoring, email regex validation, unsubscribe token verification, frontend DOM assertions, subscribe hardening, unsubscribe E2E with mock provider, and get-offers endpoint check).
+- **Scraper Timeouts**: Scraper fetches wrap Node native `fetch` with `fetchWithTimeout` enforcing a 10s default `AbortSignal.timeout`.
+- **Fail-Closed Cron**: `/api/check-updates` rejects unauthorized requests and fails closed (HTTP 500) if `CRON_SECRET` is unset in production. Function `maxDuration` is set to 60s in `vercel.json`.
+- **Separate Rate-Limiting**: IP rate limits are differentiated per endpoint (`ratelimit:subscribe:${ip}:${day}` and `ratelimit:manage:${ip}:${day}`).
+- **Tailwind CDN Note**: Production dashboard uses Tailwind CDN with inline config; future build step can replace this with precompiled static CSS if strict CSP header is added.
 
 ```bash
-npm test              # hermetic suites: email-html, ai-filter, email-regex, unsubscribe-token, frontend
+npm test              # full test suite (hermetic + hardening + e2e + endpoint check)
 npm run test:scrapers # live scraper integration validation (GitHub, HF, OpenRouter, DeepInfra, Ollama, etc.)
-node --check api/*.js src/**/*.js
+node --check api/*.js src/*.js src/**/*.js scripts/*.js
 
 # Integration suites with running server or real credentials:
 npm run test:integration # runs subscribe, subscribe-idempotency, unsubscribe, kv suites

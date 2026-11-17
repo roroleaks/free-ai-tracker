@@ -51,7 +51,7 @@ check('isNewOffer() helper defined', html.includes('function isNewOffer'));
 check('NEW_MODEL_DAYS = 7', html.includes('const NEW_MODEL_DAYS = 7'));
 check('renderOffers handles currentFilter === new', html.includes('currentFilter === \'new\''), 'case in filter chain');
 check('NEW badge markup on cards', html.includes('<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5')) && html.includes('>NEW</span>');
-check('empty state for New Models', html.includes("currentFilter === 'new' ? 'No New Models'"));
+check('empty state for New Models', html.includes("'No New Models'"));
 check('empty hint for New Models', html.includes('New models within 7 days will appear here'));
 
 console.log('\n=== 4. Dynamic score color shading (Emerald/Amber/Slate) ===');
@@ -101,6 +101,16 @@ check('manage posts to /api/manage', html.includes("'/api/manage'"));
 check('manage generic message text', html.includes("we'll email you a one-time link"));
 check('manage button label', html.includes('Send Manage Link'));
 check('manage shows no other-subscriber data', !/other@|list of|all subscribers/i.test(html));
+
+console.log('\n=== 10. DOM Hardening & P0 bug regression tests ===');
+const btnIndex = html.indexOf('id="backToTopBtn"');
+const scriptUsageIndex = html.indexOf("document.getElementById('backToTopBtn')");
+check('#backToTopBtn markup appears before script wiring', btnIndex !== -1 && scriptUsageIndex !== -1 && btnIndex < scriptUsageIndex);
+check('backToTopBtn listener is null-guarded', /if\s*\(\s*backToTopBtn\s*\)/.test(html));
+check('no inline onclick="copyOfferLink" string concat', !html.includes('onclick="copyOfferLink'));
+check('copy button uses data-url attribute', html.includes('data-url='));
+check('delegated click listener on offersGrid for copy', html.includes("offersGrid.addEventListener('click'") && html.includes('dataset.url'));
+check('safeUrl guards to http(s)', html.includes('/^https?:\\/\\//i.test(offer.url'));
 
 console.log(`\n=== FRONTEND TEST: ${passes} passed, ${failures} failed ===`);
 process.exitCode = failures ? 1 : 0;

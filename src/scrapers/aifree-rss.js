@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const AIFREE_FEED = 'https://aifree.dev/rss.xml';
 const AIFREE_SOURCE = 'aifree';
@@ -43,7 +43,7 @@ export function parseAifreeRss(xml) {
 
 export async function fetchAifreeOffers() {
   try {
-    const response = await fetch(AIFREE_FEED, {
+    const response = await fetchWithTimeout(AIFREE_FEED, {
       headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
     });
 

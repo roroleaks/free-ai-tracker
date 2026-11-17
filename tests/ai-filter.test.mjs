@@ -17,10 +17,11 @@ function check(name, cond, detail = '') {
 
 // --- scoreItem / boost tests via filterAndScore output ---
 const now = Date.now();
+let itemSeq = 0;
 const mk = (title, opts = {}) => ({
   title,
   description: opts.description || '',
-  url: opts.url || 'https://example.com/x',
+  url: opts.url !== undefined ? opts.url : `https://example.com/item-${++itemSeq}`,
   source: opts.source || 'github',
   date: opts.daysOld !== undefined ? new Date(now - opts.daysOld * DAY_MS).toISOString() : new Date().toISOString(),
 });
@@ -65,15 +66,26 @@ check('NEW_MODEL_DAYS exported = 7', NEW_MODEL_DAYS === 7);
 
 console.log('\n=== dedupe: identical titles collapse ===');
 const dupInput = [
-  mk('Duplicate Open Source Project', { description: 'aaa' }),
-  mk('Duplicate   Open Source   Project', { description: 'bbb same slug' }),
-  mk('Something Completely Different', {}),
+  mk('Duplicate Open Source Project', { url: '', description: 'aaa' }),
+  mk('Duplicate   Open Source   Project', { url: '', description: 'bbb same slug' }),
+  mk('Something Completely Different', { url: '' }),
 ];
 const deduped = await filterAndScore(dupInput);
 const dupCount = deduped.filter(f => f.title.toLowerCase().startsWith('duplicate open source')).length;
 check('duplicate slug deduped to 1', dupCount === 1, `count=${dupCount}`);
 check('different item retained', deduped.some(f => f.title.includes('Completely Different')));
 check('total unique results = 2', deduped.length === 2, `len=${deduped.length}`);
+
+console.log('\n=== dedupe: identical URLs collapse ===');
+const sameUrlInput = [
+  mk('Different Title A', { url: 'https://example.com/same-offer', description: 'free model' }),
+  mk('Different Title B', { url: 'https://example.com/same-offer', description: 'free model 100% free credits' }),
+  mk('Different Title C', { url: 'https://example.com/other-offer', description: 'free model' }),
+];
+const sameUrlDeduped = await filterAndScore(sameUrlInput);
+check('same URL deduped to 1', sameUrlDeduped.filter(f => f.url === 'https://example.com/same-offer').length === 1);
+check('same URL keeps higher score', sameUrlDeduped.find(f => f.url === 'https://example.com/same-offer')?.title === 'Different Title B');
+check('total unique by URL = 2', sameUrlDeduped.length === 2, `len=${sameUrlDeduped.length}`);
 
 console.log('\n=== cap at 15 ===');
 const many = [];

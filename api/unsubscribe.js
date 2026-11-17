@@ -4,6 +4,15 @@ import { parseUnsubscribeToken, maskEmail, SITE_URL } from '../src/utils/unsubsc
 const SUBSCRIBERS_KEY = 'subscribers';
 const WELCOME_PENDING_KEY = 'subscribers:pending';
 
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function page(title, bodyHtml, kind = 'info') {
   const icon = kind === 'success' ? '✅' : kind === 'error' ? '⚠️' : '🔒';
   return `<!DOCTYPE html>
@@ -75,7 +84,7 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html');
   return res.status(200).send(page(
     'You are Unsubscribed',
-    `We have turned off weekly digests for <strong>${maskEmail(email)}</strong>. Sorry to see you go — you can <a href="${SITE_URL}" style="color:#0284c7;">resubscribe</a> anytime.`,
+    `We have turned off weekly digests for <strong>${escapeHtml(maskEmail(email))}</strong>. Sorry to see you go — you can <a href="${SITE_URL}" style="color:#0284c7;">resubscribe</a> anytime.`,
     'success'
   ));
 }

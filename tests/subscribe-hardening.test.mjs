@@ -54,6 +54,17 @@ const server = createServer(async (req, res) => {
     return res.end(JSON.stringify(mockRes._body));
   }
 
+  if (url.pathname === '/api/manage') {
+    const method = req.method || 'POST';
+    const body = await parseBody(req);
+    const mockReq = { method, body, url: req.url };
+    const mockRes = makeMockRes();
+    await handlerRefs.manage(mockReq, mockRes);
+    res.statusCode = mockRes._status;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify(mockRes._body));
+  }
+
   // Mock Brevo SMTP endpoint, fail/hang modes toggleable via mailState.
   const body = await parseBody(req);
   let payload = {};
@@ -84,13 +95,25 @@ process.env.EMAIL_FROM = 'Free AI Tracker <mock@example.com>';
 process.env.SITE_URL = LOCAL;
 process.env.EMAIL_TIMEOUT_MS = '10000';
 
-const [{ default: subscribeHandler }] = await Promise.all([import('../api/subscribe.js')]);
-handlerRefs = { subscribe: subscribeHandler };
+const [{ default: subscribeHandler }, { default: manageHandler }] = await Promise.all([
+  import('../api/subscribe.js'),
+  import('../api/manage.js'),
+]);
+handlerRefs = { subscribe: subscribeHandler, manage: manageHandler };
 
 const emailNow = (prefix) => `${prefix}.${Date.now()}@test.dev`;
 
 async function post(email) {
   const res = await fetch(`${LOCAL}/api/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  return { status: res.status, body: await res.json() };
+}
+
+async function postManage(email) {
+  const res = await fetch(`${LOCAL}/api/manage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
@@ -205,12 +228,26 @@ const junk = await fetch(`${LOCAL}/api/subscribe`, { method: 'POST', headers: { 
 const junkBody = await junk.json();
 check('malformed JSON => 400 success=false', junk.status === 400 && junkBody.success === false, `${junk.status} ${JSON.stringify(junkBody)}`);
 
+console.log('\n=== 9. Welcome-pending retry via POST /api/manage ===');
+const pendEmail = emailNow('harden.pending');
+mailState.mode = 'fail';
+const p1 = await post(pendEmail);
+check('subscribe during outage sets pending', (await isPending(pendEmail)) === 1);
+check('welcome attempt recorded during outage', welcomeCount(pendEmail) === 1);
+
+// Provider recovers: subscriber calls /api/manage
+mailState.mode = 'ok';
+const mRes = await postManage(pendEmail);
+check('manage returns 200 generic message', mRes.status === 200 && mRes.body.success === true);
+check('welcome email retried and delivered', welcomeCount(pendEmail) === 2);
+check('pending cleared on successful delivery', (await isPending(pendEmail)) === 0);
+
 console.log('\n=== Cleanup ===');
-await Promise.all([concur, caseEmail, wsEmail, failEmail, timeEmail, actEmail, redactEmail].map((e) =>
+await Promise.all([concur, caseEmail, wsEmail, failEmail, timeEmail, actEmail, redactEmail, pendEmail].map((e) =>
   Promise.all([kv.srem('subscribers', e), kv.srem('subscribers:pending', e)])
 ));
 const cleaned = await kv.smembers('subscribers');
-check('all test emails removed', [concur, caseEmail, wsEmail, failEmail, timeEmail, actEmail, redactEmail].every((e) => !cleaned.includes(e)));
+check('all test emails removed', [concur, caseEmail, wsEmail, failEmail, timeEmail, actEmail, redactEmail, pendEmail].every((e) => !cleaned.includes(e)));
 await new Promise((resolve) => server.close(resolve));
 
 console.log(`\n=== SUBSCRIBE-HARDENING TEST: ${passes} passed, ${failures} failed ===`);

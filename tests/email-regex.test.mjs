@@ -1,20 +1,4 @@
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isValidEmail(email) {
-  if (!EMAIL_REGEX.test(email)) return false;
-  if (email.length > 254) return false;
-  const [local, domain] = email.split('@');
-  if (local.length > 64) return false;
-  if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
-  if (domain.includes('..') || domain.startsWith('.') || domain.endsWith('.')) return false;
-  if (/[-.]$/.test(domain)) return false;
-  const labels = domain.split('.');
-  if (labels.length < 2) return false;
-  const tld = labels[labels.length - 1];
-  if (!/^[A-Za-z]{2,}$/.test(tld)) return false;
-  if (labels.some((l) => l.length === 0 || /^[-]/.test(l) || /[-]$/.test(l))) return false;
-  return true;
-}
+import { isValidEmail } from '../src/utils/email.js';
 
 const cases = {
   'x@y..com': false,
@@ -29,6 +13,9 @@ const cases = {
   'test@example.com': true,
   'user.name+tag@sub.domain.co': true,
   'raouf66@gmail.com': true,
+  'a"onmouseover="alert(1)"@ab.com': false,
+  "a'b@ab.com": false,
+  '<img src=x>@ab.com': false,
 };
 let pass = true;
 for (const [e, expect] of Object.entries(cases)) {

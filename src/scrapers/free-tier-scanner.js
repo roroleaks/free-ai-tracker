@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const OPENROUTER_API = 'https://openrouter.ai/api/v1/models';
 const HF_SERVERLESS_API = 'https://huggingface.co/api/models?inference=warm&sort=trendingScore&direction=-1&limit=25';
@@ -20,7 +20,7 @@ function isFreeModel(model) {
 }
 
 export function scanOpenRouter() {
-  return fetch(OPENROUTER_API, { headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' } })
+  return fetchWithTimeout(OPENROUTER_API, { headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' } })
     .then((response) => {
       if (!response.ok) throw new Error(`OpenRouter API failed with status ${response.status}`);
       return response.json();
@@ -44,7 +44,7 @@ export function scanOpenRouter() {
 }
 
 export function scanHuggingFaceServerless() {
-  return fetch(HF_SERVERLESS_API, { headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' } })
+  return fetchWithTimeout(HF_SERVERLESS_API, { headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' } })
     .then((response) => {
       if (!response.ok) throw new Error(`HuggingFace serverless API failed with status ${response.status}`);
       return response.json();
@@ -75,7 +75,7 @@ export function scanHuggingFaceServerless() {
 }
 
 export function scanDeepInfra() {
-  return fetch(DEEPINFRA_API, { headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' } })
+  return fetchWithTimeout(DEEPINFRA_API, { headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' } })
     .then((response) => {
       if (!response.ok) throw new Error(`DeepInfra API failed with status ${response.status}`);
       return response.json();
@@ -106,7 +106,7 @@ export function scanGroq() {
     console.warn('[free-tier-scanner] GROQ_API_KEY not set — skipping Groq');
     return Promise.resolve([]);
   }
-  return fetch('https://api.groq.com/openai/v1/models', {
+  return fetchWithTimeout('https://api.groq.com/openai/v1/models', {
     headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'AI-Offer-Tracker/1.0' },
   })
     .then((response) => {
@@ -132,7 +132,7 @@ export function scanCerebras() {
     console.warn('[free-tier-scanner] CEREBRAS_API_KEY not set — skipping Cerebras');
     return Promise.resolve([]);
   }
-  return fetch('https://api.cerebras.ai/v1/models', {
+  return fetchWithTimeout('https://api.cerebras.ai/v1/models', {
     headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'AI-Offer-Tracker/1.0' },
   })
     .then((response) => {
@@ -158,7 +158,7 @@ export function scanTogether() {
     console.warn('[free-tier-scanner] TOGETHER_API_KEY not set — skipping Together AI');
     return Promise.resolve([]);
   }
-  return fetch('https://api.together.xyz/v1/models', {
+  return fetchWithTimeout('https://api.together.xyz/v1/models', {
     headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'AI-Offer-Tracker/1.0' },
   })
     .then((response) => {
@@ -184,7 +184,7 @@ export function scanCohere() {
     console.warn('[free-tier-scanner] COHERE_API_KEY not set — skipping Cohere');
     return Promise.resolve([]);
   }
-  return fetch('https://api.cohere.com/v1/models', {
+  return fetchWithTimeout('https://api.cohere.com/v1/models', {
     headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'AI-Offer-Tracker/1.0' },
   })
     .then((response) => {
@@ -210,8 +210,11 @@ export function scanGoogleAIStudio() {
     console.warn('[free-tier-scanner] GOOGLE_AI_STUDIO_KEY not set — skipping Google AI Studio');
     return Promise.resolve([]);
   }
-  return fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`, {
-    headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
+  return fetchWithTimeout('https://generativelanguage.googleapis.com/v1beta/models', {
+    headers: {
+      'x-goog-api-key': key,
+      'User-Agent': 'AI-Offer-Tracker/1.0',
+    },
   })
     .then((response) => {
       if (!response.ok) throw new Error(`Google AI Studio API failed with status ${response.status}`);

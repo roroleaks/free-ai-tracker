@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const OLLAMA_LIBRARY_URL = 'https://ollama.com/library';
 const OLLAMA_SOURCE = 'ollama';
@@ -47,7 +47,7 @@ export function parseOllamaHtml(html) {
  */
 export async function fetchOllamaModels() {
   try {
-    const response = await fetch(OLLAMA_LIBRARY_URL, {
+    const response = await fetchWithTimeout(OLLAMA_LIBRARY_URL, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
         Accept: 'text/html,application/xhtml+xml',

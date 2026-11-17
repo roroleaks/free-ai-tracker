@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const PACK_URL = 'https://education.github.com/pack';
 const PACK_SOURCE = 'student-pack';
@@ -74,7 +74,7 @@ export function parseStudentPackHtml(html) {
 
 export async function fetchStudentPackOffers() {
   try {
-    const response = await fetch(PACK_URL, {
+    const response = await fetchWithTimeout(PACK_URL, {
       headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
     });
 

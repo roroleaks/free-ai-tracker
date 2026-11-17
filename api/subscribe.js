@@ -2,25 +2,8 @@ import crypto from 'node:crypto';
 import { kv } from '../src/utils/kv.js';
 import { logger } from '../src/utils/logger.js';
 import { maskEmail } from '../src/utils/unsubscribe.js';
+import { isValidEmail } from '../src/utils/email.js';
 import { sendWelcomeEmail } from '../src/services/email-notifier.js';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isValidEmail(email) {
-  if (!EMAIL_REGEX.test(email)) return false;
-  if (email.length > 254) return false;
-  const [local, domain] = email.split('@');
-  if (local.length > 64) return false;
-  if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
-  if (domain.includes('..') || domain.startsWith('.') || domain.endsWith('.')) return false;
-  if (/[-.]$/.test(domain)) return false;
-  const labels = domain.split('.');
-  if (labels.length < 2) return false;
-  const tld = labels[labels.length - 1];
-  if (!/^[A-Za-z]{2,}$/.test(tld)) return false;
-  if (labels.some((l) => l.length === 0 || /^[-]/.test(l) || /[-]$/.test(l))) return false;
-  return true;
-}
 
 function normalizeEmail(email) {
   return email.trim().toLowerCase();
@@ -38,9 +21,10 @@ export default async function handler(req, res) {
   }
 
   const forwarded = req.headers?.['x-forwarded-for'] || '';
+  // Note: off-Vercel, the XFF first-entry IP is client-controlled.
   const ip = (typeof forwarded === 'string' && forwarded ? forwarded.split(',')[0].trim() : (req.socket?.remoteAddress || 'unknown'));
   const day = new Date().toISOString().slice(0, 10);
-  const rateKey = `ratelimit:${ip}:${day}`;
+  const rateKey = `ratelimit:subscribe:${ip}:${day}`;
   const hits = await kv.incr(rateKey);
   if (hits > 20) {
     logger.warn('subscribe rate limited', { requestId, event: 'rate_limited', ip });

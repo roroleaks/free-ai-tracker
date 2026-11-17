@@ -2,6 +2,7 @@ import { kv } from '../src/utils/kv.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
@@ -9,6 +10,7 @@ export default async function handler(req, res) {
     const data = await kv.get('latest_ai_offers');
 
     if (!data) {
+      res.setHeader('Cache-Control', 'no-store');
       return res.status(404).json({
         success: false,
         error: 'No offers found. Cron job may not have run yet.',
@@ -22,6 +24,7 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Failed to fetch offers:', error);
+    res.setHeader('Cache-Control', 'no-store');
     res.status(500).json({ success: false, error: error.message });
   }
 }

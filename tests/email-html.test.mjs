@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { buildEmailHtml, buildWelcomeEmailHtml, excerpt } from '../src/services/email-notifier.js';
+import { buildEmailHtml, buildWelcomeEmailHtml, buildManageEmailHtml, excerpt } from '../src/services/email-notifier.js';
 import { buildUnsubscribeUrl } from '../src/utils/unsubscribe.js';
 
 let passes = 0;
@@ -54,6 +54,8 @@ const welcome = buildWelcomeEmailHtml('new@user.dev');
 check('welcome is HTML', /<!DOCTYPE html>/i.test(welcome));
 check('welcome shows email', welcome.includes('new@user.dev'));
 check('welcome has token unsubscribe link', welcome.includes('/api/unsubscribe?token=') && welcome.includes('Unsubscribe anytime'));
+const manageMail = buildManageEmailHtml('<img src=x onerror=alert(1)>@test.dev');
+check('manage email escapes HTML in address', !manageMail.includes('<img') && manageMail.includes('&lt;img'));
 
 console.log('\n=== Unsubscribe URL util ===');
 const url = buildUnsubscribeUrl('a@b.dev');

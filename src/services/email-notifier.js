@@ -323,7 +323,7 @@ function buildManageEmailHtml(email) {
       <body style="margin: 0; padding: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Hidden Preheader -->
         <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #ffffff; opacity: 0;">
-          Manage your Free AI Tracker subscription for ${email}
+          Manage your Free AI Tracker subscription for ${escapeHtml(email)}
         </div>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
@@ -332,7 +332,7 @@ function buildManageEmailHtml(email) {
                 <tr>
                   <td style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
                     <h1 style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">Manage Your Subscription</h1>
-                    <p style="margin: 6px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: #bae6fd;">Free AI Tracker · ${email}</p>
+                    <p style="margin: 6px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: #bae6fd;">Free AI Tracker · ${escapeHtml(email)}</p>
                   </td>
                 </tr>
                 <tr>

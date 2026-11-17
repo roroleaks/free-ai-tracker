@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const SEARCH_QUERIES = [
   '"LLM" OR "AI model" OR "GPT" OR "open source model" in:name,description,readme',
@@ -23,7 +23,7 @@ export async function fetchGitHubReleases() {
       ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
     };
 
-    const response = await fetch(url, { headers });
+    const response = await fetchWithTimeout(url, { headers });
 
     if (response.status === 403 || response.status === 429) {
       const wait = 5000 * (attempt + 1);
@@ -57,10 +57,13 @@ export async function fetchGitHubReleases() {
     }
   }
 
-  for (const query of SEARCH_QUERIES) {
+  for (let i = 0; i < SEARCH_QUERIES.length; i++) {
+    const query = SEARCH_QUERIES[i];
     try {
       await searchPage(query);
-      await sleep(1500);
+      if (i < SEARCH_QUERIES.length - 1) {
+        await sleep(500);
+      }
     } catch (error) {
       console.error(`Failed to fetch GitHub search "${query}":`, error.message);
     }

@@ -12,6 +12,11 @@ import { logger } from '../src/utils/logger.js';
 import { kv } from '../src/utils/kv.js';
 
 export default async function handler(req, res) {
+  if (process.env.VERCEL_ENV === 'production' && !process.env.CRON_SECRET) {
+    console.error('[CRON] CRON_SECRET is required in production to protect /api/check-updates');
+    return res.status(500).json({ success: false, error: 'Server misconfiguration: CRON_SECRET is required in production' });
+  }
+
   const auth = req.headers?.authorization || '';
   if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -21,25 +26,35 @@ export default async function handler(req, res) {
   logger.info('Starting AI offer check...');
 
   try {
-    const [githubReleases, socialUpdates, freeTiers, aifreeOffers, studentPack, ollamaModels, kaggleModels] = await Promise.all([
-      fetchGitHubReleases(),
-      fetchSocialUpdates(),
-      scanFreeTiers(),
-      fetchAifreeOffers(),
-      fetchStudentPackOffers(),
-      fetchOllamaModels(),
-      fetchKaggleModels(),
-    ]);
+    const scraperTasks = [
+      { name: 'github', run: fetchGitHubReleases },
+      { name: 'social', run: fetchSocialUpdates },
+      { name: 'freeTiers', run: scanFreeTiers },
+      { name: 'aifree', run: fetchAifreeOffers },
+      { name: 'studentPack', run: fetchStudentPackOffers },
+      { name: 'ollama', run: fetchOllamaModels },
+      { name: 'kaggle', run: fetchKaggleModels },
+    ];
 
-    const allFindings = [
-      ...githubReleases,
-      ...socialUpdates,
-      ...freeTiers,
-      ...aifreeOffers,
-      ...studentPack,
-      ...ollamaModels,
-      ...kaggleModels,
-    ].filter(Boolean);
+    const settled = await Promise.allSettled(scraperTasks.map(s => s.run()));
+
+    const counts = {};
+    const allFindings = [];
+
+    settled.forEach((resItem, idx) => {
+      const name = scraperTasks[idx].name;
+      if (resItem.status === 'fulfilled') {
+        const items = Array.isArray(resItem.value) ? resItem.value : [];
+        counts[name] = items.length;
+        allFindings.push(...items);
+      } else {
+        counts[name] = 'failed';
+        logger.error(`Scraper "${name}" rejected:`, resItem.reason);
+      }
+    });
+
+    const countSummary = scraperTasks.map(s => `${s.name}=${counts[s.name]}`).join(' ');
+    logger.info(`Scraper counts: ${countSummary}`);
 
     logger.info(`Collected ${allFindings.length} raw findings`);
 

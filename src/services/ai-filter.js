@@ -70,7 +70,7 @@ function scoreItem(finding) {
 }
 
 function dedupeKey(finding) {
-  if (finding.url && !finding.url.startsWith('https://example.com')) {
+  if (finding.url) {
     return 'url:' + finding.url;
   }
   const title = (finding.title || '').toLowerCase().trim();

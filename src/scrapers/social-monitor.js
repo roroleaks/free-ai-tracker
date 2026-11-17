@@ -1,9 +1,11 @@
-import fetch from 'node-fetch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const REPOS = [
   'vercel/ai',
   'ollama/ollama',
-  'ggerganov/llama.cpp',
+  'ggml-org/llama.cpp',
   'vllm-project/vllm',
   'microsoft/autogen',
   'huggingface/transformers',
@@ -46,9 +48,21 @@ const REPO_SOURCE = {
   'openai/openai-python': 'github',
 };
 
-async function fetchReleases(repo) {
+async function fetchReleases(repo, attempt = 0) {
   const url = `https://api.github.com/repos/${repo}/releases?per_page=5`;
-  const response = await fetch(url, { headers: apiHeaders() });
+  const response = await fetchWithTimeout(url, { headers: apiHeaders() });
+
+  if (response.status === 403 || response.status === 429) {
+    if (attempt < 2) {
+      const wait = 5000 * (attempt + 1);
+      console.warn(`GitHub releases rate-limited (${response.status}) for ${repo}, retrying in ${wait}ms`);
+      await sleep(wait);
+      return fetchReleases(repo, attempt + 1);
+    }
+    const err = new Error(`GitHub releases rate-limited (${response.status}) for ${repo}`);
+    err.isRateLimit = true;
+    throw err;
+  }
 
   if (!response.ok) {
     console.error(`GitHub releases failed for ${repo} with status ${response.status}`);
@@ -104,7 +118,7 @@ async function getRedditToken() {
     return redditTokenCache.token;
   }
 
-  const response = await fetch('https://www.reddit.com/api/v1/access_token', {
+  const response = await fetchWithTimeout('https://www.reddit.com/api/v1/access_token', {
     method: 'POST',
     headers: {
       'User-Agent': REDDIT_UA,
@@ -129,7 +143,7 @@ async function getRedditToken() {
 
 async function fetchSubredditOAuth(subreddit, token) {
   const url = `https://oauth.reddit.com/r/${subreddit}/hot?limit=10&raw_json=1`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       'User-Agent': REDDIT_UA,
       Authorization: `Bearer ${token}`,
@@ -201,7 +215,7 @@ async function fetchSubredditPosts(subreddit) {
   if (token) return fetchSubredditOAuth(subreddit, token);
 
   // Fallback: public RSS/Atom feed (best-effort, heavily rate-limited).
-  const response = await fetch(`https://www.reddit.com/r/${subreddit}/.rss`, {
+  const response = await fetchWithTimeout(`https://www.reddit.com/r/${subreddit}/.rss`, {
     headers: { 'User-Agent': REDDIT_UA },
   });
 
@@ -215,7 +229,7 @@ async function fetchSubredditPosts(subreddit) {
 }
 
 async function fetchHuggingFaceBlog() {
-  const response = await fetch('https://huggingface.co/blog/feed.xml', {
+  const response = await fetchWithTimeout('https://huggingface.co/blog/feed.xml', {
     headers: { 'User-Agent': 'AI-Offer-Tracker/1.0' },
   });
 
@@ -238,10 +252,21 @@ export async function fetchSocialUpdates() {
     console.error('Failed to fetch HuggingFace blog:', error.message);
   }
 
-  let foundRepos = [];
+  const foundRepos = [];
   try {
-    foundRepos = await Promise.all(REPOS.map((repo) => fetchReleases(repo)));
-    findings.push(...foundRepos.flat());
+    for (const repo of REPOS) {
+      try {
+        const items = await fetchReleases(repo);
+        foundRepos.push(...items);
+      } catch (err) {
+        if (err.isRateLimit) {
+          console.warn(`[social-monitor] GitHub releases rate limited on ${repo}; skipping remaining repos for this run.`);
+          break;
+        }
+        console.error(`Failed to fetch repo release for ${repo}:`, err.message);
+      }
+    }
+    findings.push(...foundRepos);
   } catch (error) {
     console.error('Failed to fetch repo releases:', error.message);
   }
@@ -263,7 +288,7 @@ export async function fetchSocialUpdates() {
       for (const sub of SUBREDDITS.slice(0, 5)) {
         const posts = await fetchSubredditPosts(sub);
         foundReddit.push(...posts);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await sleep(500);
       }
     }
     findings.push(...foundReddit);

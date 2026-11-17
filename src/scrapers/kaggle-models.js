@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const KAGGLE_MODELS_API = 'https://www.kaggle.com/api/v1/models/list?pageSize=25';
 const KAGGLE_SOURCE = 'kaggle';
@@ -42,7 +42,7 @@ export async function fetchKaggleModels() {
 
   try {
     const auth = Buffer.from(`${username}:${key}`).toString('base64');
-    const response = await fetch(KAGGLE_MODELS_API, {
+    const response = await fetchWithTimeout(KAGGLE_MODELS_API, {
       headers: {
         'User-Agent': 'FreeAITracker/1.0',
         'Authorization': `Basic ${auth}`,
