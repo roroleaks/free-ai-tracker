@@ -48,6 +48,10 @@ export default async function handler(req, res) {
   // Hardened security: only allows sending to raouf66@gmail.com
   const email = ALLOWED_RECIPIENT;
   const type = req.query?.type || 'digest';
+  const customFrom = req.query?.from;
+  if (customFrom) {
+    process.env.EMAIL_FROM = customFrom;
+  }
 
   try {
     let offers = [];
@@ -64,12 +68,15 @@ export default async function handler(req, res) {
       offers = FALLBACK_OFFERS;
     }
 
+    const currentFrom = process.env.EMAIL_FROM || 'Free AI Tracker <tracker@yourdomain.com>';
+
     if (type === 'welcome') {
       await sendWelcomeEmail(email);
       return res.status(200).json({
         success: true,
         type: 'welcome',
         recipient: email,
+        from: currentFrom,
         message: `Welcome email sent successfully to ${email}`,
       });
     }
@@ -81,6 +88,7 @@ export default async function handler(req, res) {
       success: true,
       type: 'digest',
       recipient: email,
+      from: currentFrom,
       offersCount: offers.length,
       message: `Weekly AI Digest (${offers.length} offers) sent successfully to ${email}`,
     });
@@ -88,6 +96,7 @@ export default async function handler(req, res) {
     logger.error('Failed to send test email:', error);
     return res.status(500).json({
       success: false,
+      from: process.env.EMAIL_FROM || 'default',
       error: error.message,
     });
   }

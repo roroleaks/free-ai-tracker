@@ -462,7 +462,8 @@ async function sendBrevo({ from, to, subject, html }) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(`Mail provider rejected send to ${maskedTo} (status=${res.status})`);
+    const detail = data?.message || data?.code || JSON.stringify(data);
+    throw new Error(`Mail provider rejected send to ${maskedTo} (status=${res.status}, detail=${detail})`);
   }
   if (!data.messageId) {
     throw new Error(`Mail provider returned no message id for ${maskedTo} — send did not complete`);
