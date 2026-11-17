@@ -112,5 +112,44 @@ check('copy button uses data-url attribute', html.includes('data-url='));
 check('delegated click listener on offersGrid for copy', html.includes("offersGrid.addEventListener('click'") && html.includes('dataset.url'));
 check('safeUrl guards to http(s)', html.includes('/^https?:\\/\\//i.test(offer.url'));
 
+console.log('\n=== 11. Day-Light theme toggle and styles ===');
+check('theme toggle button present', html.includes('id="themeToggleBtn"'));
+check('sun and moon icons present', html.includes('id="sunIcon"') && html.includes('id="moonIcon"'));
+check('daylight theme CSS rules present', html.includes('html.theme-light body'));
+check('daylight theme toggle wiring in script', html.includes('updateThemeUI') && html.includes('THEME_KEY'));
+check('touch-friendly target on theme button', html.includes('min-w-[40px]') || html.includes('min-w-[44px]'));
+
+console.log('\n=== 12. App Icons, PWA Manifest & Share Meta ===');
+const manifestPath = path.resolve('public', 'manifest.json');
+let manifest = null;
+try {
+  manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+} catch (e) {}
+check('manifest.json exists and parses', !!manifest);
+check('manifest has name and short_name', manifest && manifest.name === 'Free AI Tracker' && manifest.short_name === 'AI Tracker');
+check('manifest defines icons array', manifest && Array.isArray(manifest.icons) && manifest.icons.length >= 3);
+
+function checkMagicBytes(filename, expectedPrefix) {
+  const fullPath = path.resolve('public', filename);
+  if (!fs.existsSync(fullPath)) return false;
+  const buf = fs.readFileSync(fullPath);
+  for (let i = 0; i < expectedPrefix.length; i++) {
+    if (buf[i] !== expectedPrefix[i]) return false;
+  }
+  return true;
+}
+
+check('apple-touch-icon.png is a valid PNG', checkMagicBytes('apple-touch-icon.png', [0x89, 0x50, 0x4E, 0x47]));
+check('icon-192.png is a valid PNG', checkMagicBytes('icon-192.png', [0x89, 0x50, 0x4E, 0x47]));
+check('icon-512.png is a valid PNG', checkMagicBytes('icon-512.png', [0x89, 0x50, 0x4E, 0x47]));
+check('favicon.ico is a valid ICO', checkMagicBytes('favicon.ico', [0x00, 0x00, 0x01, 0x00]));
+check('og-image.jpg is a valid JPEG', checkMagicBytes('og-image.jpg', [0xFF, 0xD8, 0xFF]));
+
+check('index.html links apple-touch-icon', html.includes('rel="apple-touch-icon"'));
+check('index.html links manifest', html.includes('rel="manifest"'));
+check('index.html links favicon.ico and png icons', html.includes('href="/favicon.ico"') && html.includes('href="/icon-192.png"'));
+check('index.html defines og:image meta', html.includes('property="og:image"'));
+check('index.html defines twitter:image meta', html.includes('name="twitter:image"'));
+
 console.log(`\n=== FRONTEND TEST: ${passes} passed, ${failures} failed ===`);
 process.exitCode = failures ? 1 : 0;
