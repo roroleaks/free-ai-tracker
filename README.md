@@ -10,7 +10,7 @@ Automated scanner for free AI models, time-allowed promos, and platform updates.
 - **Free Tier Scanner** - Detects $0 models on OpenRouter, HuggingFace serverless, Groq, Together AI, Google AI Studio (`src/scrapers/free-tier-scanner.js`)
 - **Curated Feeds** - aifree.dev RSS (`src/scrapers/aifree-rss.js`), GitHub Student Pack (`src/scrapers/student-pack.js`)
 - **AI Filtering** - Keyword-based relevance scoring with source boosts and dedup (`src/services/ai-filter.js`)
-- **Email Notifications** - Structured HTML digests via Brevo (`src/services/email-notifier.js`), idempotent under retries (AbortController timeout, `subscribers:pending` welcome state)
+- **Email Notifications** - Structured HTML digests via Brevo (`src/services/email-notifier.js`), idempotent under retries (AbortController timeout, `subscribers:pending` welcome state). Designed with robust Outlook/MSO ghost tables, solid background fallbacks, structured content hierarchy (top 3 weekly picks, category grouping by source, and dedicated signup credit section), responsive `prefers-color-scheme` dark mode, touch-friendly $\ge 44\text{px}$ CTA buttons, and strict clipping resilience (<90KB).
 - **Subscription API** - Visitors subscribe via the dashboard; emails stored in Upstash Redis (`api/subscribe.js`)
 - **Unsubscribe / Manage** - One-click token-based unsubscribe + manage pages (`api/unsubscribe.js`, `api/manage.js`)
 

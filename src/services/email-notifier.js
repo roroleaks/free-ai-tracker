@@ -41,6 +41,35 @@ function excerpt(text, max = 160) {
   return clean.slice(0, cut > 0 ? cut : max) + '…';
 }
 
+function clampTitle(title, max = 110) {
+  const clean = String(title ?? '').trim();
+  if (!clean) return '';
+  if (clean.length <= max) return clean;
+  const cut = clean.lastIndexOf(' ', max);
+  return clean.slice(0, cut > 0 ? cut : max) + '…';
+}
+
+function dedupeDescription(title, description) {
+  const cleanTitle = stripTags(title);
+  const cleanDesc = stripTags(description);
+  if (!cleanDesc) return '';
+  if (!cleanTitle) return cleanDesc;
+
+  if (cleanDesc.length >= 40 && cleanTitle.length >= 40 && cleanDesc.slice(0, 40).toLowerCase() === cleanTitle.slice(0, 40).toLowerCase()) {
+    let matchLen = 40;
+    while (matchLen < cleanTitle.length && matchLen < cleanDesc.length && cleanTitle[matchLen].toLowerCase() === cleanDesc[matchLen].toLowerCase()) {
+      matchLen++;
+    }
+    const stripped = cleanDesc.slice(matchLen).replace(/^[\s:–—.-]+/, '');
+    return stripped ? stripped.charAt(0).toUpperCase() + stripped.slice(1) : cleanDesc;
+  }
+  if (cleanTitle.length >= 10 && cleanDesc.toLowerCase().startsWith(cleanTitle.toLowerCase())) {
+    const stripped = cleanDesc.slice(cleanTitle.length).replace(/^[\s:–—.-]+/, '');
+    return stripped ? stripped.charAt(0).toUpperCase() + stripped.slice(1) : cleanDesc;
+  }
+  return cleanDesc;
+}
+
 function getDomain(url) {
   try {
     const hostname = new URL(url).hostname;
@@ -97,12 +126,42 @@ function sourceEmoji(source) {
   }[source] || '⚡';
 }
 
-function buildItemHtml(f, index) {
+const SOURCE_GROUPS = {
+  openrouter: 'Models & Platforms',
+  groq: 'Models & Platforms',
+  together: 'Models & Platforms',
+  google: 'Models & Platforms',
+  deepinfra: 'Models & Platforms',
+  cerebras: 'Models & Platforms',
+  cohere: 'Models & Platforms',
+  ollama: 'Models & Platforms',
+  kaggle: 'Models & Platforms',
+  github: 'Open-source & Tools',
+  huggingface: 'Open-source & Tools',
+  'vercel-ai-sdk': 'Open-source & Tools',
+  aifree: 'News & Reading',
+  reddit: 'News & Reading',
+  'student-pack': 'News & Reading',
+};
+
+const GROUP_ORDER = [
+  'Models & Platforms',
+  'Open-source & Tools',
+  'News & Reading',
+];
+
+function buildItemHtml(f, options = {}) {
+  const isTopPick = typeof options === 'object' && options !== null ? Boolean(options.isTopPick) : false;
   const meta = sourceMeta(f.source);
   const icon = faviconUrl(f.url);
   const site = siteDisplay(f.url);
-  const abstract = excerpt(f.description, 180) || 'No description available';
+  const actionDomain = getDomain(f.url);
+  const actionLabel = actionDomain ? `${actionDomain} · ${meta.label}` : meta.label;
+  const cleanTitle = clampTitle(f.title, 110);
+  const cleanDesc = dedupeDescription(f.title, f.description);
+  const abstract = excerpt(cleanDesc, 180) || 'No description available';
   const score = typeof f.score === 'number' ? Math.round(f.score * 100) : null;
+  const showRelevance = typeof f.score === 'number' && f.score < 0.9;
   const isNew = f.isNew === true;
   const isPromoCredit = f.offerType === 'signup-credit';
   const safeUrl = /^https?:\/\//i.test(f.url || '') ? f.url : '#';
@@ -110,17 +169,18 @@ function buildItemHtml(f, index) {
   return `
     <tr>
       <td style="padding: 0 0 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e2e8f0; border-radius: 14px; border-collapse: separate; overflow: hidden; background: #ffffff; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="offer-card ${isTopPick ? 'offer-card-top-pick' : ''}" style="border: 1px solid #e2e8f0; ${isTopPick ? 'border-top: 2px solid #38bdf8;' : ''} border-radius: 14px; border-collapse: separate; overflow: hidden; background: #ffffff; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
           <!-- Top Tag Bar -->
           <tr>
-            <td style="padding: 18px 20px 10px; background: #ffffff;">
+            <td class="offer-card-top" style="padding: 18px 20px 10px; background: #ffffff;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="vertical-align: middle;">
                     <span style="display: inline-block; background: ${meta.color}; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; line-height: 1.2;">${sourceEmoji(f.source)} ${meta.label}</span>
-                    ${isNew ? '<span style="display: inline-block; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">NEW</span>' : ''}
-                    ${isPromoCredit ? '<span style="display: inline-block; background: #fef3c7; border: 1px solid #fde68a; color: #b45309; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">PROMO CREDIT</span>' : ''}
-                    ${score !== null ? `<span style="display: inline-block; background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">Relevance ${score}%</span>` : ''}
+                    ${isTopPick ? '<span class="top-pick-pill" style="display: inline-block; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">TOP PICK</span>' : ''}
+                    ${isNew ? '<span class="new-pill" style="display: inline-block; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">NEW</span>' : ''}
+                    ${isPromoCredit ? '<span class="promo-pill" style="display: inline-block; background: #fef3c7; border: 1px solid #fde68a; color: #b45309; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">PROMO CREDIT</span>' : ''}
+                    ${!isTopPick && showRelevance && score !== null ? `<span class="relevance-pill" style="display: inline-block; background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; margin-left: 6px; line-height: 1.2;">Relevance ${score}%</span>` : ''}
                   </td>
                 </tr>
               </table>
@@ -129,24 +189,33 @@ function buildItemHtml(f, index) {
           <!-- Content Body -->
           <tr>
             <td style="padding: 0 20px 14px;">
-              <h3 style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 17px; font-weight: 700; color: #0f172a; line-height: 1.35; letter-spacing: -0.01em;">${escapeHtml(f.title)}</h3>
+              <h3 class="offer-title" style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 17px; font-weight: 700; color: #0f172a; line-height: 1.35; letter-spacing: -0.01em;">${escapeHtml(cleanTitle)}</h3>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 10px;">
                 <tr>
                   <td style="vertical-align: middle;">
-                    ${icon ? `<img src="${icon}" alt="" width="16" height="16" style="vertical-align: middle; display: inline-block; margin-right: 6px; border-radius: 3px;" onerror="this.style.display='none'">` : ''}
+                    ${icon ? `<img src="${icon}" alt="" width="16" height="16" style="vertical-align: middle; display: inline-block; margin-right: 6px; border-radius: 3px;">` : ''}
                   </td>
-                  <td style="vertical-align: middle; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 600; color: #64748b; line-height: 1.2;">
+                  <td class="site-display" style="vertical-align: middle; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 600; color: #64748b; line-height: 1.2;">
                     ${escapeHtml(site)}
                   </td>
                 </tr>
               </table>
-              <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">${escapeHtml(abstract)}</p>
+              <p class="offer-desc" style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #334155;">${escapeHtml(abstract)}</p>
             </td>
           </tr>
           <!-- Bottom Action Row -->
           <tr>
-            <td style="padding: 12px 20px 16px; background: #f8fafc; border-top: 1px solid #f1f5f9; text-align: right;">
-              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #0284c7; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; padding: 9px 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);">View offer →</a>
+            <td class="action-strip" style="padding: 12px 20px 14px; background: #f8fafc; border-top: 1px solid #f1f5f9;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td class="action-strip-meta" align="left" style="vertical-align: middle; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 500; color: #64748b; line-height: 1.3;">
+                    ${escapeHtml(actionLabel)}
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="offer-btn" style="display: inline-block; background: #0284c7; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; padding: 13px 22px; border-radius: 8px; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25); mso-line-height-rule: exactly; line-height: 18px;">View offer →</a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>
@@ -159,9 +228,70 @@ function buildEmailHtml(findings, recipient) {
   const standard = (findings || []).filter(f => f.offerType !== 'signup-credit');
   const promo = (findings || []).filter(f => f.offerType === 'signup-credit');
 
-  let itemsHtml = standard.map(buildItemHtml).join('');
+  // Sort standard findings by score descending (stable, preserving order for ties)
+  const sortedStandard = standard
+    .map((item, originalIndex) => ({ item, originalIndex }))
+    .sort((a, b) => {
+      const scoreA = typeof a.item.score === 'number' ? a.item.score : 0;
+      const scoreB = typeof b.item.score === 'number' ? b.item.score : 0;
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+      return a.originalIndex - b.originalIndex;
+    })
+    .map(wrapper => wrapper.item);
+
+  const topPicks = sortedStandard.slice(0, 3);
+  const remainingStandard = sortedStandard.slice(3);
+
+  let itemsHtml = '';
+
+  if (topPicks.length > 0) {
+    itemsHtml += `
+      <tr>
+        <td style="padding: 10px 0 12px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td class="group-header-label" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; padding-right: 12px;">
+                ⚡ Top picks this week
+              </td>
+              <td width="100%" style="vertical-align: middle;">
+                <div class="group-header-rule" style="border-top: 1px solid #bae6fd; height: 1px; line-height: 1px;"></div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+    itemsHtml += topPicks.map(f => buildItemHtml(f, { isTopPick: true })).join('');
+  }
+
+  // Group remaining standard cards
+  for (const groupName of GROUP_ORDER) {
+    const groupItems = remainingStandard.filter(f => (SOURCE_GROUPS[f.source] || 'Models & Platforms') === groupName);
+    if (groupItems.length > 0) {
+      itemsHtml += `
+        <tr>
+          <td style="padding: 20px 0 12px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td class="group-header-label" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; padding-right: 12px;">
+                  ${escapeHtml(groupName)}
+                </td>
+                <td width="100%" style="vertical-align: middle;">
+                  <div class="group-header-rule" style="border-top: 1px solid #e2e8f0; height: 1px; line-height: 1px;"></div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      `;
+      itemsHtml += groupItems.map(f => buildItemHtml(f)).join('');
+    }
+  }
+
   if (promo.length > 0) {
-    if (standard.length > 0) {
+    if (sortedStandard.length > 0) {
       itemsHtml += `
         <tr>
           <td style="padding: 24px 0 12px;">
@@ -172,8 +302,9 @@ function buildEmailHtml(findings, recipient) {
         </tr>
       `;
     }
-    itemsHtml += promo.map(buildItemHtml).join('');
+    itemsHtml += promo.map(f => buildItemHtml(f)).join('');
   }
+
   const items = itemsHtml;
   const subUrl = buildUnsubscribeUrl(recipient || process.env.EMAIL_TO || '');
   const dateFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -184,6 +315,8 @@ function buildEmailHtml(findings, recipient) {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light dark">
+        <meta name="supported-color-schemes" content="light dark">
         <title>Free AI Tracker - Weekly AI Digest</title>
         <style>
           @media only screen and (max-width: 600px) {
@@ -191,25 +324,49 @@ function buildEmailHtml(findings, recipient) {
             .header-padding { padding: 28px 18px !important; }
             .body-padding { padding: 22px 16px 8px !important; }
             .footer-padding { padding: 22px 16px !important; }
+            .relevance-pill { display: none !important; }
+            .offer-btn { display: block !important; width: 100% !important; box-sizing: border-box !important; text-align: center !important; }
+            .action-strip table, .action-strip tbody, .action-strip tr, .action-strip td { display: block !important; width: 100% !important; }
+            .action-strip-meta { display: block !important; padding-bottom: 10px !important; text-align: left !important; }
+            .footer-link { display: block !important; padding: 8px 0 !important; font-size: 14px !important; margin: 0 !important; }
+          }
+          @media (prefers-color-scheme: dark) {
+            body, .email-bg { background: #0b1120 !important; }
+            .email-container { background: #0f172a !important; border-color: #334155 !important; }
+            .email-intro { color: #cbd5e1 !important; }
+            .offer-card { background: #1e293b !important; border-color: #334155 !important; }
+            .offer-card-top { background: #1e293b !important; }
+            .offer-title { color: #e2e8f0 !important; }
+            .offer-desc { color: #cbd5e1 !important; }
+            .site-display { color: #94a3b8 !important; }
+            .action-strip { background: #0f172a !important; border-color: #1e293b !important; }
+            .action-strip-meta { color: #94a3b8 !important; }
+            .relevance-pill { background: rgba(241, 245, 249, 0.12) !important; border-color: rgba(226, 232, 240, 0.2) !important; color: #cbd5e1 !important; }
+            .new-pill { background: rgba(16, 185, 129, 0.18) !important; border-color: rgba(16, 185, 129, 0.35) !important; color: #34d399 !important; }
+            .promo-pill { background: rgba(245, 158, 11, 0.18) !important; border-color: rgba(245, 158, 11, 0.35) !important; color: #fbbf24 !important; }
+            .top-pick-pill { background: rgba(56, 189, 248, 0.18) !important; border-color: rgba(56, 189, 248, 0.35) !important; color: #38bdf8 !important; }
+            .group-header-label { color: #94a3b8 !important; }
+            .group-header-rule { border-color: #334155 !important; }
           }
         </style>
       </head>
-      <body style="margin: 0; padding: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+      <body class="email-bg" style="margin: 0; padding: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <!-- Hidden Preheader -->
         <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #ffffff; opacity: 0;">
           Weekly AI Digest: ${findings.length} hand-picked free AI offers, open models &amp; platform credits ready to explore. &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
         </div>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-bg" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
             <td align="center">
+              <!--[if mso]><table role="presentation" width="640" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width: 640px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);">
                 <!-- Header / Hero -->
                 <tr>
-                  <td class="header-padding" style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
+                  <td class="header-padding" style="background-color: #0f172a; background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
                     <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 14px;">
                       <tr>
-                        <td>
-                          <img src="https://free-ai-tracker.vercel.app/icon-192.png" alt="Free AI Tracker" width="56" height="56" style="border-radius: 14px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.35); border: 2px solid rgba(255,255,255,0.25);">
+                        <td style="background-color: rgba(255,255,255,0.08); border-radius: 14px; width: 56px; height: 56px; text-align: center; vertical-align: middle;">
+                          <img src="https://free-ai-tracker.vercel.app/icon-192.png" alt="Free AI Tracker logo" width="56" height="56" style="border-radius: 14px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.35); border: 2px solid rgba(255,255,255,0.25);">
                         </td>
                       </tr>
                     </table>
@@ -221,16 +378,18 @@ function buildEmailHtml(findings, recipient) {
                     <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; color: #bae6fd; font-weight: 500;">${findings.length} hand-picked free AI models &amp; platform credits</p>
                     <p style="margin: 4px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #7dd3fc;">${dateFormatted}</p>
                     <div style="margin-top: 14px;">
-                      <span style="display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 5px 14px; font-size: 11.5px; font-weight: 600; color: #e0f2fe;">⚡ 100% Free Tiers &nbsp;•&nbsp; 🚀 Open Weights &nbsp;•&nbsp; 🎁 Promo Credits</span>
+                      <span style="display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 5px 12px; margin: 4px; font-size: 11.5px; font-weight: 600; color: #e0f2fe;">⚡ 100% Free Tiers</span>
+                      <span style="display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 5px 12px; margin: 4px; font-size: 11.5px; font-weight: 600; color: #e0f2fe;">🚀 Open Weights</span>
+                      <span style="display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 5px 12px; margin: 4px; font-size: 11.5px; font-weight: 600; color: #e0f2fe;">🎁 Promo Credits</span>
                     </div>
                   </td>
                 </tr>
                 <!-- Body Section -->
                 <tr>
                   <td class="body-padding" style="padding: 28px 24px 8px;">
-                    <p style="margin: 0 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14.5px; line-height: 1.6; color: #334155;">
+                    <p class="email-intro" style="margin: 0 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14.5px; line-height: 1.6; color: #334155;">
                       Hey there! 👋<br><br>
-                      Here are the <strong>${findings.length} best free AI offers</strong> we found this week — new free credits, models, tiers and tools. Tap through for the details.
+                      Here are the <strong>${findings.length} best free AI offers</strong> we found this week — new free credits, models, tiers and tools. The top 3 picks first, everything else grouped below. Tap through for the details.
                     </p>
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       ${items}
@@ -243,14 +402,15 @@ function buildEmailHtml(findings, recipient) {
                   <td class="footer-padding" style="background: #0f172a; padding: 26px 28px; text-align: center;">
                     <p style="margin: 0 0 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 700; color: #f8fafc;">Free AI Tracker</p>
                     <p style="margin: 0 0 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #94a3b8;">Automated weekly digest of free AI tools, models &amp; credits.</p>
-                    <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #64748b;">© ${new Date().getFullYear()} · Curated by Dr Raouf Roshdy · free-ai-tracker.vercel.app</p>
+                    <p style="margin: 0 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #94a3b8;">© ${new Date().getFullYear()} · Curated by Dr Raouf Roshdy · free-ai-tracker.vercel.app</p>
                     <div style="margin: 0 0 8px;">
-                      <a href="https://free-ai-tracker.vercel.app" target="_blank" rel="noopener noreferrer" style="display: inline-block; color: #38bdf8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; text-decoration: underline; margin-right: 14px;">Live Dashboard</a>
-                      <a href="${subUrl}" style="display: inline-block; color: #bae6fd; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; text-decoration: underline;">Unsubscribe from weekly digest</a>
+                      <a href="https://free-ai-tracker.vercel.app" target="_blank" rel="noopener noreferrer" class="footer-link" style="display: inline-block; color: #38bdf8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; text-decoration: underline; margin-right: 14px;">Live Dashboard</a>
+                      <a href="${subUrl}" class="footer-link" style="display: inline-block; color: #bae6fd; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; text-decoration: underline;">Unsubscribe from weekly digest</a>
                     </div>
                   </td>
                 </tr>
               </table>
+              <!--[if mso]></td></tr></table><![endif]-->
               <p style="margin: 14px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; color: #94a3b8; text-align: center;">You are receiving this because you subscribed to the Free AI Tracker weekly digest.</p>
             </td>
           </tr>
@@ -269,6 +429,8 @@ function buildWelcomeEmailHtml(email) {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light dark">
+        <meta name="supported-color-schemes" content="light dark">
         <title>Welcome to Free AI Tracker!</title>
         <style>
           @media only screen and (max-width: 600px) {
@@ -286,13 +448,14 @@ function buildWelcomeEmailHtml(email) {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
             <td align="center">
+              <!--[if mso]><table role="presentation" width="640" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);">
                 <tr>
-                  <td class="header-padding" style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
+                  <td class="header-padding" style="background-color: #0f172a; background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
                     <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 14px;">
                       <tr>
-                        <td>
-                          <img src="https://free-ai-tracker.vercel.app/icon-192.png" alt="Free AI Tracker" width="56" height="56" style="border-radius: 14px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.35); border: 2px solid rgba(255,255,255,0.25);">
+                        <td style="background-color: rgba(255,255,255,0.08); border-radius: 14px; width: 56px; height: 56px; text-align: center; vertical-align: middle;">
+                          <img src="https://free-ai-tracker.vercel.app/icon-192.png" alt="Free AI Tracker logo" width="56" height="56" style="border-radius: 14px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.35); border: 2px solid rgba(255,255,255,0.25);">
                         </td>
                       </tr>
                     </table>
@@ -335,6 +498,7 @@ function buildWelcomeEmailHtml(email) {
                   </td>
                 </tr>
               </table>
+              <!--[if mso]></td></tr></table><![endif]-->
             </td>
           </tr>
         </table>
@@ -352,6 +516,8 @@ function buildManageEmailHtml(email) {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light dark">
+        <meta name="supported-color-schemes" content="light dark">
         <title>Manage Your Subscription - Free AI Tracker</title>
         <style>
           @media only screen and (max-width: 600px) {
@@ -369,9 +535,10 @@ function buildManageEmailHtml(email) {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 24px 12px;">
           <tr>
             <td align="center">
+              <!--[if mso]><table role="presentation" width="640" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width: 620px; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);">
                 <tr>
-                  <td class="header-padding" style="background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
+                  <td class="header-padding" style="background-color: #0f172a; background: linear-gradient(135deg, #090d16 0%, #0f172a 40%, #1e3a8a 75%, #0284c7 100%); padding: 36px 28px; text-align: center;">
                     <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 14px;">
                       <tr>
                         <td style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 56px; height: 56px; text-align: center; font-size: 26px; line-height: 56px;">
@@ -405,6 +572,7 @@ function buildManageEmailHtml(email) {
                   </td>
                 </tr>
               </table>
+              <!--[if mso]></td></tr></table><![endif]-->
             </td>
           </tr>
         </table>
@@ -504,4 +672,4 @@ export async function sendManageEmail(email) {
   });
 }
 
-export { buildEmailHtml, buildWelcomeEmailHtml, buildManageEmailHtml, excerpt, buildItemHtml };
+export { buildEmailHtml, buildWelcomeEmailHtml, buildManageEmailHtml, excerpt, clampTitle, dedupeDescription, buildItemHtml };

@@ -1,5 +1,13 @@
 import 'dotenv/config';
-import { buildEmailHtml, buildWelcomeEmailHtml, buildManageEmailHtml, excerpt } from '../src/services/email-notifier.js';
+import { 
+  buildEmailHtml, 
+  buildWelcomeEmailHtml, 
+  buildManageEmailHtml, 
+  excerpt,
+  clampTitle,
+  dedupeDescription,
+  buildItemHtml
+} from '../src/services/email-notifier.js';
 import { buildUnsubscribeUrl } from '../src/utils/unsubscribe.js';
 
 let passes = 0;
@@ -42,7 +50,18 @@ check('abstract excerpt included', /subscription for abstract/i.test(html) || /a
 check('unsubscribe link present (token-based)', html.includes('/api/unsubscribe?token='), 'missing token unsubscribe URL');
 check('unsubscribe link does NOT expose raw email', !html.includes('user@test.dev'));
 check('NEW badge for isNew', html.includes('>NEW</span>'));
-check('relevance score badge', html.includes('Relevance 94%'));
+check('TOP PICK badge on top picks', html.includes('>TOP PICK</span>'));
+check('relevance pill absent for score >= 0.9', !html.includes('Relevance 94%'));
+
+const lowerScoreCard = buildItemHtml({
+  title: 'Community Tool',
+  description: 'A handy tool for developers',
+  url: 'https://groq.com/tool',
+  source: 'groq',
+  score: 0.85,
+});
+check('relevance score badge on non-top-pick with score < 0.9', lowerScoreCard.includes('Relevance 85%'));
+check('relevance pill absent for score >= 0.9 on standard card', !buildItemHtml({ title: 'High', description: 'Desc', url: 'https://groq.com', source: 'groq', score: 0.95 }).includes('Relevance'));
 check('site name shown', /github\.com|education\.github\.com|reddit\.com/.test(html));
 
 console.log('\n=== Email builder: per-link favicon ===');
@@ -98,6 +117,71 @@ const mixedHtml = buildEmailHtml([kaggleOffer, creditOffer], 'user@test.dev');
 check('Kaggle badge and emoji rendered', mixedHtml.includes('🏅 Kaggle') && mixedHtml.includes('#20BEFF'));
 check('Signup credit section header present', mixedHtml.includes('Signup &amp; Promo Credits'));
 check('PROMO CREDIT badge rendered', mixedHtml.includes('PROMO CREDIT'));
+
+console.log('\n=== Hero fallbacks & MSO ghost tables ===');
+check('every hero has background-color: #0f172a', 
+  html.includes('background-color: #0f172a') && 
+  welcome.includes('background-color: #0f172a') && 
+  manageMail.includes('background-color: #0f172a')
+);
+check('mso conditional present in all three builders', 
+  html.includes('<!--[if mso]>') && 
+  welcome.includes('<!--[if mso]>') && 
+  manageMail.includes('<!--[if mso]>')
+);
+
+console.log('\n=== Button styling & touch targets ===');
+check('button has offer-btn class and 13px 22px padding', 
+  html.includes('class="offer-btn"') && 
+  html.includes('padding: 13px 22px')
+);
+
+console.log('\n=== No JavaScript / onerror removal ===');
+const cleanManageMail = buildManageEmailHtml('user@test.dev');
+check('no onerror attribute remains', 
+  !html.includes('onerror=') && 
+  !welcome.includes('onerror=') && 
+  !cleanManageMail.includes('onerror=')
+);
+
+console.log('\n=== Title clamping and Description deduplication ===');
+const shortTitle = clampTitle('Short Title', 110);
+const longTitle = clampTitle('word '.repeat(30), 110);
+const noSpaceTitle = clampTitle('x'.repeat(150), 110);
+const multiByteTitle = clampTitle('🔥 Special Model '.repeat(15), 110);
+check('clampTitle returns short title untouched', shortTitle === 'Short Title');
+check('clampTitle cuts at word boundary <= 111 with ellipsis', longTitle.endsWith('…') && longTitle.length <= 111);
+check('clampTitle hard-cuts unbroken token at 110 + ellipsis', noSpaceTitle.endsWith('…') && noSpaceTitle.length === 111);
+check('clampTitle handles multibyte correctly', multiByteTitle.endsWith('…') && multiByteTitle.length <= 111);
+
+const dedupedDesc = dedupeDescription(
+  'GitHub Student Developer Pack AI Perks for Students',
+  'GitHub Student Developer Pack AI Perks for Students include free GitHub Copilot and cloud credits'
+);
+check('description de-dupes when matching title prefix >= 40 chars', !dedupedDesc.startsWith('GitHub Student') && dedupedDesc.includes('free GitHub Copilot'));
+
+console.log('\n=== Promo divider presence ===');
+check('promo divider absent when no promo items exist', !html.includes('Signup &amp; Promo Credits'));
+check('promo divider present when promo items exist', mixedHtml.includes('Signup &amp; Promo Credits'));
+
+console.log('\n=== Dark mode styles ===');
+check('dark-mode prefers-color-scheme block present', html.includes('@media (prefers-color-scheme: dark)'));
+check('color-scheme meta tags present', html.includes('<meta name="color-scheme" content="light dark">'));
+
+console.log('\n=== 15-item digest size budget (< 90KB) ===');
+const fixture15 = Array.from({ length: 15 }, (_, i) => ({
+  title: `AI Platform Free Tier Offer ${i + 1}`,
+  description: `Generous free token tier inference and serverless container hosting for model variant ${i + 1} with community weights.`,
+  url: `https://example.com/item-${i + 1}`,
+  source: ['openrouter', 'groq', 'together', 'google', 'deepinfra', 'cerebras', 'cohere', 'ollama', 'github', 'huggingface', 'aifree', 'reddit', 'student-pack', 'kaggle', 'vercel-ai-sdk'][i % 15],
+  score: 0.95 - (i * 0.02),
+  isNew: i % 2 === 0,
+  offerType: i === 14 ? 'signup-credit' : undefined,
+}));
+const digest15 = buildEmailHtml(fixture15, 'raouf66@gmail.com');
+const byteLength15 = Buffer.byteLength(digest15, 'utf8');
+console.log(`Rendered 15-item digest size: ${byteLength15} bytes (${(byteLength15 / 1024).toFixed(1)} KB)`);
+check('total length < 90,000 characters for a 15-item fixture', digest15.length < 90000, `length was ${digest15.length}`);
 
 console.log(`\n=== EMAIL-HTML TEST: ${passes} passed, ${failures} failed ===`);
 process.exit(failures ? 1 : 0);
